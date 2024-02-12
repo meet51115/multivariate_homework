@@ -1,0 +1,52 @@
+---
+title: "homework 1"
+author: "Meet Bhanushali"
+date: "2024-02-12"
+output: html_document
+---
+
+
+
+
+```{r cars}
+# 1.important question: How do different factors such as age, department, education level, job satisfaction, and work-life balance influence employee attrition within IBM?
+# 2. Answer: This question is important because understanding the factors that contribute to employee attrition can help IBM and other organizations implement strategies to improve employee retention, boost morale, and enhance overall productivity. By identifying which factors have the most significant impact on attrition, IBM can tailor its policies and practices to create a more satisfying work environment, leading to higher employee retention rates and potentially saving costs associated with recruitment and training of new employees.
+# 
+# 3. Data collection: 
+# o Age
+# o Department
+# o Distance from home
+# o Education
+# o Education field
+# o Environment satisfaction
+# o Job satisfaction
+# o Marital status
+# o Monthly income
+# o Number of companies worked
+# o Work-life balance
+# o Years at company
+# o Attrition (dependent variable)
+# 
+# 4. Data dictionary:
+# o Age: Age of employees (numeric)
+# o Department: Department of work (categorical)
+# o Distance from home: Distance from home to workplace (numeric)
+# o Education: Level of education (1-Below College; 2-College; 3-Bachelor; 4-Master; 5-Doctor; ordinal)
+# o Education Field: Field of education (categorical)
+# o Environment Satisfaction: Level of environmental satisfaction (1-Low; 2-Medium; 3-High; 4-Very High; ordinal)
+# o Job Satisfaction: Level of job satisfaction (1-Low; 2-Medium; 3-High; 4-Very High; ordinal)
+# o Marital Status: Marital status of employees (categorical)
+# o Monthly Income: Monthly income of employees (numeric)
+# o Num Companies Worked: Number of companies worked prior to IBM (numeric)
+# o Work Life Balance: Level of work-life balance (1-Bad; 2-Good; 3-Better; 4-Best; ordinal)
+# o Years At Company: Current years of service in IBM (numeric)
+# o Attrition: Employee attrition status (0 - No, 1 - Yes; binary)
+# 
+# Three best independent variable according to me are:
+#   Job Satisfaction
+# Work-Life Balance
+#  Years at Company
+View(Attrition.Data)
+
+```
+
