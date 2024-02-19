@@ -1,0 +1,44 @@
+---
+title: 'Exploratory Data Analysis (EDA): Visualization'
+author: "Meet Bhanushali"
+date: "2024-02-19"
+output: html_document
+---
+
+```{r }
+
+library(readr)
+library(ggplot2)
+IBM <- read_csv("/Users/meet/Desktop/Attrition Data.csv")
+str(IBM)
+summary(IBM)
+
+#univariate
+#What is the distribution of employee ages?
+hist(IBM$Age, main="Distribution of Age", xlab="Age", ylab="Frequency", col="skyblue", border="black")
+#The histogram illustrates the frequency distribution of ages among employees in the dataset.
+#It provides a visual representation of how age is distributed within the sample population.
+#The range of ages covered by the dataset can be observed from the histogram.
+#This helps in understanding the diversity of age groups represented in the dataset.
+
+#bivariate
+#Is there a relationship between monthly income and education level?
+boxplot(IBM$MonthlyIncome ~ IBM$Education, main = "Monthly Income by Education Level", xlab = "Education Level", ylab = "Monthly Income")
+#The boxplot shows the distribution of Monthly Income for each Education Level category.
+#It allows for a comparison of income levels among individuals with different educational backgrounds.
+#Any noticeable trends or patterns in the distribution of Monthly Income across Education Levels can be identified.
+#For instance, there may be a gradual increase or decrease in income with higher levels of education, or certain Education Fields may exhibit higher income levels compared to others.
+
+
+#multivariate
+#Exploration of Years at Company, Num Companies Worked, and Distance From Home?
+ggplot(IBM, aes(x = YearsAtCompany, y = NumCompaniesWorked, size = DistanceFromHome, color = Department)) +
+  geom_point(alpha = 0.7) +
+  scale_size_continuous(range = c(2, 10)) +
+  labs(title = "Years at Company vs. Num Companies Worked",
+       x = "Years at Company", y = "Num Companies Worked") +
+  theme_minimal()
+
+#This stacked bar plot visualizes the distribution of Work Life Balance across different Education Fields, segmented by Department.
+#It helps to compare the distribution of Work Life Balance within each Education Field across different Departments.
+```
