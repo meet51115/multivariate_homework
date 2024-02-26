@@ -1,0 +1,167 @@
+---
+title: "Mean and Variance Anlaysis"
+author: "Meet Bhanushali"
+date: "2024-02-26"
+output: html_document
+---
+
+
+
+```{r }
+library(readr)
+dataset <- read_csv("/Users/meet/Desktop/Attrition\ Data.csv")
+attach(dataset)
+str(dataset)
+
+dataset_x <- dataset[, 10:13]
+dataset_x
+dataset_cm <- colMeans(dataset_x)
+dataset_S <- cov(dataset_x)
+dataset_d <- apply(dataset_x, MARGIN = 1, function(dataset_x)t(dataset_x - dataset_cm) %*% solve(dataset_S) %*% (dataset_x - dataset_cm))
+dataset_cm
+dataset_S
+dataset_d
+
+
+# t-tests, one by one. Attrittion  vs. Non Attrition 
+with(data=dataset,t.test(MonthlyIncome[Attrition=="Yes"],MonthlyIncome[Attrition=="No"],var.equal=TRUE))
+with(data=dataset,t.test(NumCompaniesWorked[Attrition=="Yes"],NumCompaniesWorked[Attrition=="No"],var.equal=TRUE))
+with(data=dataset,t.test(WorkLifeBalance[Attrition=="Yes"],WorkLifeBalance[Attrition=="No"],var.equal=TRUE))
+with(data=dataset,t.test(YearsAtCompany[Attrition=="Yes"],YearsAtCompany[Attrition=="No"],var.equal=TRUE))
+
+library(Hotelling)
+t2testdataset <- hotelling.test(MonthlyIncome + NumCompaniesWorked + WorkLifeBalance + YearsAtCompany  ~ Attrition, data=dataset)
+# Output of the function hotelling.test is given
+cat("T2 statistic =",t2testdataset$stat[[1]],"\n")
+print(t2testdataset)
+#  T2 statistic is located in the first element of the list "stat"
+
+# testing Variation
+# F-test for Total length (not recommended)
+var.test(MonthlyIncome[Attrition=="Yes"],MonthlyIncome[Attrition=="No"])
+attach(dataset)
+var.test(MonthlyIncome[Attrition=="Yes"],MonthlyIncome[Attrition=="No"])
+
+
+# Levene's tests based on absolute differences around means using t-tests. Standarizing the sparrows data set with scale()
+
+matstand <- scale(dataset[,10:13])
+matstand
+matsurv <- matstand[Attrition=="Yes",]
+matsurv
+matnosurv <- matstand[Attrition=="No",]
+vecmediansurv <- apply(matsurv, 2, median)
+
+# in the above 2 represents column. Hence, we are asking for column median
+vecmediansurv
+
+vecmediannosurv <- apply(matnosurv, 2, median)
+matabsdevsurv <- abs(matsurv - matrix(rep(vecmediansurv,nrow(matsurv)),nrow=nrow(matsurv), byrow=TRUE))
+
+matabsdevnosurv <- abs(matnosurv - matrix(rep(vecmediannosurv,nrow(matnosurv)),nrow=nrow(matnosurv), byrow=TRUE))
+
+matabsdevnosurv
+
+matabsdev.all <- rbind(matabsdevsurv,matabsdevnosurv)
+matabsdev.all <- data.frame(Attrition, matabsdev.all)
+
+t.test(matabsdev.all$MonthlyIncome[Attrition=="Yes"],matabsdev.all$MonthlyIncome[Attrition=="No"], alternative="less",var.equal = TRUE)
+#The two-sample t-test conducted to compare the mean absolute deviations of monthly income between employees who have experienced attrition ("Yes" group) and those who haven't ("No" group) yielded a t-value of -0.5442 with 1468 degrees of freedom and a p-value of 0.2932. This result suggests that there is no significant difference in the mean absolute deviations of monthly income between the two groups, as the p-value exceeds the typical significance level of 0.05. The 95% confidence interval for the difference in mean absolute deviations includes zero, further supporting this conclusion. Therefore, based on these findings, there is insufficient evidence to reject the null hypothesis, indicating that the mean absolute deviations of monthly income do not differ significantly between employees who have experienced attrition and those who haven't.
+t.test(matabsdev.all$NumCompaniesWorked[Attrition=="Yes"],matabsdev.all$NumCompaniesWorked[Attrition=="No"], alternative="less",var.equal = TRUE)
+
+t.test(matabsdev.all$WorkLifeBalance[Attrition=="Yes"],matabsdev.all$WorkLifeBalance[Attrition=="No"], alternative="less",var.equal = TRUE)
+
+t.test(matabsdev.all$YearsAtCompany[Attrition=="Yes"],matabsdev.all$YearsAtCompany[Attrition=="No"], alternative="less",var.equal = TRUE)
+#The two-sample t-test conducted to compare the mean absolute deviations of years at the company between employees who have experienced attrition ("Yes" group) and those who haven't ("No" group) resulted in a t-value of 0.45841 with 1468 degrees of freedom and a p-value of 0.6766. This indicates that there is no significant difference in the mean absolute deviations of years at the company between the two groups, as the p-value exceeds the conventional significance level of 0.05. The 95% confidence interval for the difference in mean absolute deviations ranges from negative infinity to 0.1126677, encompassing zero. Thus, based on these results, there is insufficient evidence to reject the null hypothesis, suggesting that the mean absolute deviations of years at the company do not differ significantly between employees who have experienced attrition and those who haven't.
+
+
+matstand
+
+matstand.all <- data.frame(Attrition, matstand)
+colnames(matstand.all) <- colnames(dataset[10:13])
+t2testdataset <- hotelling.test(MonthlyIncome + NumCompaniesWorked + WorkLifeBalance + YearsAtCompany  ~ Attrition, data=dataset)
+cat("T2 statistic =",t2testdataset$stat[[1]],"\n")
+print(t2testdataset)
+#The Hotelling's T-squared test conducted on the standardized variables including MonthlyIncome, NumCompaniesWorked, WorkLifeBalance, and YearsAtCompany, with respect to attrition status, resulted in a T2 statistic of 54.46245. This statistic indicates the degree of separation between the two groups based on their multivariate means. A higher T2 statistic suggests greater discrimination between the groups. Further interpretation of this statistic would require comparison with critical values from a Hotelling's T-squared distribution and consideration of its significance level. Nonetheless, the substantial magnitude of the T2 statistic suggests notable differences in the multivariate means of the standardized variables between employees who have experienced attrition and those who haven't.
+
+# In the above we standardized using scale function
+matabsdev.all
+
+# We can also look at Van Valen's test. Equivalent to the comparison of mean absolute median
+# diferences between two groups. In the sparrows' example, the Van Valen's test
+# is one-sided (Mean dij for survivors < Mean dij for non-survivors)
+# dij is the norm of the individual vector i composed by the absolute
+# deviations computed for all the variables in sample j.
+# These norms define the second column of the data frame d.all
+
+d.all <- data.frame(Attrition,sqrt(rowSums(matabsdev.all[,-1]^2)))
+d.all
+colnames(d.all)[2] <- "dij"
+d.all
+head(d.all)
+with(d.all, t.test(dij[Attrition=="Yes"], dij[Attrition=="No"],var.equal=TRUE, alternative="less"))
+#The two-sample t-test conducted on the absolute deviations between the standardized variables for employees who have experienced attrition ("Yes" group) and those who haven't ("No" group) resulted in a t-value of 1.6088 with 1468 degrees of freedom and a p-value of 0.9461. This suggests that there is no significant difference in the absolute deviations between the two groups, as the p-value exceeds the typical significance level of 0.05. The 95% confidence interval for the difference in mean absolute deviations ranges from negative infinity to 0.2457489, encompassing zero. Therefore, based on these results, there is insufficient evidence to reject the null hypothesis, indicating that the absolute deviations of the standardized variables do not differ significantly between employees who have experienced attrition and those who haven't.
+
+sprintf("d-values for Attrition: Mean = %2.3f, Variance = %2.3f",mean(d.all$dij[Attrition=="Yes"]),var(d.all$dij[Attrition=="yes"]))
+sprintf("d-values for Non-Attrition: Mean = %2.3f, Variance = %2.3f",mean(d.all$dij[Attrition=="No"]),var(d.all$dij[Attrition=="No"]))
+
+#In the computed d-values for both attrition and non-attrition groups, the mean absolute deviations are approximately 1.909 and 1.788, respectively. However, there appears to be a discrepancy in the variance calculation for the attrition group, which resulted in an "NA" value. This discrepancy may be due to the presence of missing or infinite values in the data. For the non-attrition group, the variance of the absolute deviations is approximately 1.122. Despite the variance calculation issue for the attrition group, the mean absolute deviations provide insight into the dispersion of the standardized variables around their respective means for both groups. The higher mean absolute deviation for the attrition group suggests potentially greater variability in the standardized variables compared to the non-attrition group, although further investigation into the variance discrepancy is warranted for a comprehensive interpretation.
+
+# Hotelling Test
+
+
+# Leverne test is used to verify Homoscedasticity. It tests if the variance of two samples are # #equal. Levene's test is an inferential statistic used to assess the equality of variances for a #variable calculated for two or more groups.[1] Some common statistical procedures assume that #variances of the populations from which different samples are drawn are equal. Levene's test #assesses this assumption.
+
+library(car)
+leveneTest(MonthlyIncome ~ Attrition, data=dataset)
+#leveneTest() produces a two-sided test
+leveneTest(NumCompaniesWorked ~Attrition, data=dataset)
+leveneTest(WorkLifeBalance ~ Attrition, data=dataset)
+leveneTest(YearsAtCompany ~ Attrition, data=dataset)
+
+
+
+# ANOVA
+summary(aov(MonthlyIncome ~ Attrition))
+
+#The ANOVA (Analysis of Variance) conducted on the monthly income with respect to attrition status revealed a significant effect of attrition on monthly income (F(1, 1468) = 38.49, p < 0.001). This result suggests that there is a statistically significant difference in the mean monthly income between employees who have experienced attrition and those who haven't. The significant F-value indicates that the variability in monthly income between the two groups is not likely due to random chance alone. Post-hoc tests or further analysis may be conducted to explore specific differences in monthly income between the attrition and non-attrition groups. Overall, this finding underscores the importance of attrition status in understanding the variability in monthly income among employees.
+
+summary(aov(NumCompaniesWorked ~ Attrition))
+summary(aov(WorkLifeBalance ~ Attrition))
+summary(aov(YearsAtCompany ~ Attrition))
+
+# mahalanobis
+library(stats)
+
+setdata_MD <- mahalanobis(dataset_x, dataset_cm, dataset_S)
+setdata_MD
+dataset$pvalues <- pchisq(setdata_MD, df=3, lower.tail=FALSE)
+dataset
+
+# BoxM
+
+library(biotools)
+boxM(dataset[,10:13],Attrition)
+
+# MANOVA
+
+
+# Select the numeric columns for MANOVA analysis
+numeric_data <- dataset[, 10:13]
+
+# Perform MANOVA analysis
+manova_result <- manova(as.matrix(numeric_data) ~ Attrition, data = dataset)
+
+# Print summary
+summary(manova_result)
+
+#The MANOVA (Multivariate Analysis of Variance) conducted on the numeric variables, including MonthlyIncome, NumCompaniesWorked, WorkLifeBalance, and YearsAtCompany, with respect to attrition status yielded a significant effect of attrition on the multivariate outcome (Pillai's trace = 0.035773, approx F(4, 1465) = 13.588, p < 0.001). This result indicates that there is a statistically significant difference in the combined multivariate means of the numeric variables between employees who have experienced attrition and those who haven't. The significant p-value suggests that the observed variability in the numeric variables between the two groups is unlikely to occur by chance alone. Post-hoc tests or further investigation may be conducted to identify specific differences in the individual numeric variables between the attrition and non-attrition groups. Overall, this finding underscores the importance of considering attrition status when analyzing the multivariate variability of the numeric variables.
+
+
+
+
+
+```
+
+```
+
