@@ -1,0 +1,390 @@
+---
+title: "PCA Analysis homework 4"
+author: "Meet Bhanushali"
+date: "2024-03-03"
+output: html_document
+---
+
+
+
+```{r }
+library(readr)
+IBM <- read_csv("/Users/meet/Desktop/Attrition\ Data.csv")
+str(IBM)
+attach(IBM)
+#Get the Correlations between the measurements
+#The correlation between Age and MonthlyIncome is 0.497, indicating a moderate positive relationship, suggesting that older employees tend to have higher monthly incomes.
+#The correlation between Age and YearsAtCompany is 0.311, indicating a moderate positive relationship, suggesting that older employees tend to have longer tenures at the company.
+#The correlation between DistanceFromHome and NumCompaniesWorked is -0.029, indicating a weak negative relationship, suggesting that the distance from home to work is weakly negatively correlated with the number of companies an employee has worked for.
+#The correlation between Education and MonthlyIncome is 0.095, indicating a weak positive relationship, suggesting that higher education levels might be weakly positively correlated with higher monthly incomes.
+#The correlation between Education and NumCompaniesWorked is 0.126, indicating a weak positive relationship, suggesting that higher education levels might be weakly positively correlated with a higher number of companies an employee has worked for.
+ex<-c(-2,-3,-6,-9)
+result<-cor(IBM[,ex])
+result 
+# Using prcomp to compute the principal components (eigenvalues and eigenvectors). With scale=TRUE, variable means are set to zero, and variances set to one
+#PC1 seems to capture variability related to Age, MonthlyIncome, and YearsAtCompany. This component might represent tenure or experience-related factors.
+#PC2 appears to be influenced by variables like DistanceFromHome and Education, suggesting factors related to work location and educational background.
+#PC3 seems to be primarily influenced by variables related to job satisfaction and work-life balance.
+IBM_pca <- prcomp(IBM[,ex],scale=TRUE)
+IBM_pca
+summary(IBM_pca)
+# sample scores stored in IBM_pca$x
+# singular values (square roots of eigenvalues) stored in sparrow_pca$sdev
+# loadings (eigenvectors) are stored in IBM_pca$rotation
+# variable means stored in IBM_pca$center
+# variable standard deviations stored in IBM_pca$scale
+# A table containing eigenvalues and %'s accounted, follows
+# Eigenvalues are sdev^2
+(eigen_IBM <- IBM_pca$sdev^2)
+names(eigen_IBM) <- paste("PC",1:9,sep="")
+eigen_IBM
+sumlambdas <- sum(eigen_IBM)
+sumlambdas
+propvar <- eigen_IBM/sumlambdas
+propvar
+cumvar_IBM <- cumsum(propvar)
+cumvar_IBM
+matlambdas <- rbind(eigen_IBM,propvar,cumvar_IBM)
+rownames(matlambdas) <- c("Eigenvalues","Prop. variance","Cum. prop. variance")
+round(matlambdas,4)
+summary(IBM_pca)
+IBM_pca$rotation
+print(IBM_pca)
+## Sample scores stored in sparrow_pca$x
+IBM_pca$x
+# Identifying the scores by their survival status
+IBMtyp_pca <- cbind(data.frame(Attrition),IBM_pca$x)
+IBMtyp_pca
+# Means of scores for all the PC's classified by Survival status
+included_columns <- c(-2,-3,-9)
+IBMPC <- aggregate(IBMtyp_pca[, included_columns],by=list(Attrition=IBM$Attrition),mean)
+IBMPC
+IBMPC <- IBMPC[rev(order(IBMPC$Attrition)),]
+IBMPC
+IBMfmeans <- t(IBMPC[,-1])
+IBMfmeans
+colnames(IBMfmeans) <- t(as.vector(IBMPC[1]$Attrition))
+IBMfmeans
+# Standard deviations of scores for all the PC's classified by Survival status
+#For PC1, PC2, PC3, and PC4, all t-tests yield very small p-values, indicating significant differences in the mean values between the "No" and "Yes" groups of attrition.
+#The mean values of each principal component seem to differ substantially between employees who have left the company and those who haven't, suggesting that these components might be related to factors associated with attrition.
+IBMsdsPC <- aggregate(IBMtyp_pca[,included_columns],by=list(Attrition=IBM$Attrition),sd)
+IBMfsds <- t(IBMsdsPC[,ex])
+colnames(IBMfsds) <- t(as.vector(IBMsdsPC[1]$Attrition))
+IBMfsds
+t.test(PC1~IBM$Attrition,data=IBMtyp_pca)
+t.test(PC2~IBM$Attrition,data=IBMtyp_pca)
+t.test(PC3~IBM$Attrition,data=IBMtyp_pca)
+t.test(PC4~IBM$Attrition,data=IBMtyp_pca)
+t.test(PC5~IBM$Attrition,data=IBMtyp_pca)
+## F ratio tests
+#For PC3 and PC5, the p-values are less than 0.05, indicating significant differences in variances between the "No" and "Yes" groups for these principal components.
+#For PC4, the p-value is close to 0.1, which might be considered marginally significant depending on the chosen significance level. It suggests some evidence of difference in variances but not strong evidence.
+#PC1 and PC2 are not included in this output, so it's assumed that their variances were previously tested or deemed not significant.
+var.test(PC1~IBM$Attrition,data=IBMtyp_pca)
+var.test(PC2~IBM$Attrition,data=IBMtyp_pca)
+var.test(PC3~IBM$Attrition,data=IBMtyp_pca)
+var.test(PC4~IBM$Attrition,data=IBMtyp_pca)
+var.test(PC5~IBM$Attrition,data=IBMtyp_pca)
+# Levene's tests (one-sided)
+library(car)
+(LTPC1 <- leveneTest(PC1~IBM$Attrition,data=IBMtyp_pca))
+(p_PC1_1sided <- LTPC1[[3]][1]/2)
+(LTPC2 <- leveneTest(PC2~IBM$Attrition,data=IBMtyp_pca))
+(p_PC2_1sided=LTPC2[[3]][1]/2)
+(LTPC3 <- leveneTest(PC3~IBM$Attrition,data=IBMtyp_pca))
+(p_PC3_1sided <- LTPC3[[3]][1]/2)
+(LTPC4 <- leveneTest(PC4~IBM$Attrition,data=IBMtyp_pca))
+(p_PC4_1sided <- LTPC4[[3]][1]/2)
+(LTPC5 <- leveneTest(PC5~IBM$Attrition,data=IBMtyp_pca))
+(p_PC5_1sided <- LTPC5[[3]][1]/2)
+# Plotting the scores for the first and second components
+plot(IBMtyp_pca$PC1, IBMtyp_pca$PC2,pch=ifelse(IBMtyp_pca$Attrition == "S",1,16),xlab="PC1", ylab="PC2", main="49 IBM against values for PC1 & PC2")
+abline(h=0)
+abline(v=0)
+legend("bottomleft", legend=c("Attrition","Nonattrition"), pch=c(1,16))
+plot(eigen_IBM, xlab = "Component number", ylab = "Component variance", type = "l", main = "Scree diagram")
+plot(log(eigen_IBM), xlab = "Component number",ylab = "log(Component variance)", type="l",main = "Log(eigenvalue) diagram")
+print(summary(IBM_pca))
+diag(cov(IBM_pca$x))
+xlim <- range(IBM_pca$x[,1])
+IBM_pca$x[,1]
+IBM_pca$x
+plot(IBM_pca$x,xlim=xlim,ylim=xlim)
+IBM_pca$rotation[,1]
+IBM_pca$rotation
+plot(IBM[,ex])
+IBM_pca$x
+plot(IBM_pca)
+#get the original value of the data based on PCA
+center <- IBM_pca$center
+center
+
+scale <- IBM_pca$scale
+new_IBM <- as.matrix(IBM[,ex])
+new_IBM
+drop(scale(new_IBM,center=center, scale=scale)%*%IBM_pca$rotation[,ex])
+predict(IBM_pca)[,1]
+#The aboved two gives us the same thing. predict is a good function to know.
+IBM$Attrition <- as.factor(IBM$Attrition)
+out <- sapply(1:5, function(i){plot(IBM$Attrition,IBM_pca$x[,i],xlab=paste("PC",i,sep=""),ylab="Attrition")})
+pairs(IBM_pca$x[,1:5], ylim = c(-6,4),xlim = c(-6,4),panel=function(x,y,...){text(x,y,IBM$Attrition)})
+# Better Ways to Visualize
+
+library(factoextra)
+library(FactoMineR)
+library(ggfortify)
+library(psych)
+library(corrplot)
+library(devtools)
+# Correlation
+#Overall, these scatterplot matrices provide a visual exploration of the relationships between variables in the IBM dataset, both in their original form and after PCA, with a focus on how these relationships may relate to attrition status.
+pairs.panels(IBM[,-1],
+             gap = 0,
+             bg = c("red", "blue")[IBM$Attrition],
+             pch=21)
+pairs.panels(IBM_pca$x,
+             gap=0,
+             bg = c("red", "blue")[IBM$Attrition],
+             pch=21)
+fviz_eig(IBM_pca, addlabels = TRUE)
+fviz_pca_var(IBM_pca,col.var = "cos2",
+             gradient.cols = c("#FFCC00", "#CC9933", "#660033", "#330033"),
+             repel = TRUE)
+fviz_pca_ind(IBM_pca, col.ind = "cos2", 
+                  gradient.cols = c("#FFCC00", "#CC9933", "#660033", "#330033"), 
+                  repel = TRUE)
+biplot(IBM_pca)
+autoplot(IBM_pca,
+         data = IBM[,-1],
+         loadings = TRUE,
+         labels = IBM$Attrition)
+# Different PCA Method. 
+res.pca <- PCA(IBM[,ex], graph = FALSE)
+print(res.pca)
+# Visualize and Interpret PCA using these functions 
+
+#get_eigenvalue(res.pca): Extract the eigenvalues/variances of principal components
+#fviz_eig(res.pca): Visualize the eigenvalues
+#get_pca_ind(res.pca), get_pca_var(res.pca): Extract the results for individuals and variables, respectively.
+#fviz_pca_ind(res.pca), fviz_pca_var(res.pca): Visualize the results individuals and variables, respectively.
+#fviz_pca_biplot(res.pca): Make a biplot of individuals and variables.
+
+eig.val <- get_eigenvalue(res.pca)
+eig.val
+
+fviz_eig(res.pca, addlabels = TRUE, ylim = c(0, 50))
+
+var <- get_pca_var(res.pca)
+#var$coord: coordinates of variables to create a scatter plot
+#var$cos2: represents the quality of representation for variables on the factor map. It’s calculated as the squared coordinates: var.cos2 = var.coord * var.coord.
+#var$contrib: contains the contributions (in percentage) of the variables to the principal components. 
+#The contribution of a variable (var) to a given principal component is (in percentage) : (var.cos2 * 100) / (total cos2 of the component).
+var
+# Coordinates
+head(var$coord)
+# Cos2: quality on the factore map
+head(var$cos2)
+# Contributions to the principal components
+head(var$contrib)
+
+#The plot Below is also known as variable correlation plots. It shows the relationships between all variables. It can be interpreted as follow:
+#Positively correlated variables are grouped together.
+#Negatively correlated variables are positioned on opposite sides of the plot origin (opposed quadrants).
+#The distance between variables and the origin measures the quality of the variables on the factor map. 
+#Variables that are away from the origin are well represented on the factor map.
+
+# Correlation circle
+fviz_pca_var(res.pca, col.var = "black")
+# Quality of representation
+
+
+corrplot(var$cos2, is.corr=FALSE)
+# Total cos2 of variables on Dim.1 and Dim.2
+#A high cos2 indicates a good representation of the variable on the principal component. 
+#In this case the variable is positioned close to the circumference of the correlation circle.
+#A low cos2 indicates that the variable is not perfectly represented by the PCs. 
+#In this case the variable is close to the center of the circle.
+#The first visualization (fviz_cos2()) focuses on the quality of representation of variables on the first two principal components, which helps identify which variables are most important for explaining the variation in the data along these components.
+#The second visualization (fviz_pca_var()) provides a comprehensive overview of the variance explained by each principal component and the contributions of individual variables to these components, aiding in the interpretation of the PCA results.
+fviz_cos2(res.pca, choice = "var", axes = 1:2)
+fviz_pca_var(res.pca, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE # Avoid text overlapping
+             )
+# Change the transparency by cos2 values
+fviz_pca_var(res.pca, alpha.var = "cos2")
+corrplot(var$contrib, is.corr=FALSE)
+# Contributions of variables to PC1
+fviz_contrib(res.pca, choice = "var", axes = 1, top = 10)
+# Contributions of variables to PC2
+fviz_contrib(res.pca, choice = "var", axes = 2, top = 10)
+fviz_pca_var(res.pca, col.var = "contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07")
+             )
+fviz_pca_var(res.pca, alpha.var = "contrib")
+
+fviz_pca_ind(res.pca,
+             geom.ind = "point", # show points only (nbut not "text")
+             col.ind = IBM$Attrition, # color by groups
+             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, # Concentration ellipses
+             legend.title = "Groups"
+             )
+# Description of PC
+abc<-c (1,4,5,7,8,10,11,12,13)
+res.desc <- dimdesc(res.pca, axes =ex, proba = 0.05)
+# Description of dimension 1
+res.desc$Dim.1
+res.desc$Dim.4
+res.desc$Dim.5
+res.desc$Dim.7
+res.desc$Dim.8
+res.desc$Dim.10
+res.desc$Dim.11
+res.desc$Dim.12
+res.desc$Dim.13
+
+# Graph of Indiviuals
+ind <- get_pca_ind(res.pca)
+ind
+## Principal Component Analysis Results for individuals
+##  ===================================================
+##   Name       Description                       
+## 1 "$coord"   "Coordinates for the individuals" 
+## 2 "$cos2"    "Cos2 for the individuals"        
+## 3 "$contrib" "contributions of the individuals"
+#To get access to the different components, use this:
+
+# Coordinates of individuals
+head(ind$coord)
+# Quality of individuals
+head(ind$cos2)
+# Contributions of individuals
+head(ind$contrib)
+fviz_pca_ind(res.pca)
+
+fviz_pca_ind(res.pca, col.ind = "cos2", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE # Avoid text overlapping (slow if many points)
+             )
+fviz_pca_ind(res.pca, pointsize = "cos2", 
+             pointshape = 21, fill = "#E7B800",
+             repel = TRUE # Avoid text overlapping (slow if many points)
+             )
+
+fviz_pca_ind(res.pca, col.ind = "cos2", pointsize = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE # Avoid text overlapping (slow if many points)
+             )
+fviz_cos2(res.pca, choice = "ind")
+# Total contribution on PC1 and PC2
+fviz_contrib(res.pca, choice = "ind", axes = 1:2)
+
+# Create a random continuous variable of length 23,
+# Same length as the number of active individuals in the PCA
+set.seed(123)
+my.cont.var <- rnorm(1470)
+# Color individuals by the continuous variable
+fviz_pca_ind(res.pca, col.ind = my.cont.var,
+             gradient.cols = c("blue", "yellow", "red"),
+             legend.title = "Cont.Var")
+#Overall, this visualization aids in understanding the distribution of individual observations in the PCA space and how they relate to the "Attrition" variable, potentially providing insights into any underlying patterns or trends in the data.
+fviz_pca_ind(res.pca,
+             geom.ind = "point", # show points only (nbut not "text")
+             col.ind = IBM$Attrition, # color by groups
+             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, # Concentration ellipses
+             legend.title = "Groups"
+             )
+
+fviz_pca_ind(res.pca, geom.ind = "point", col.ind = IBM$Attrition, 
+             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, ellipse.type = "confidence",
+             legend.title = "Groups"
+             )
+fviz_pca_ind(res.pca,
+             label = "none", # hide individual labels
+             habillage = IBM$Attrition, # color by groups
+             addEllipses = TRUE, # Concentration ellipses
+             palette = "jco"
+             )
+fviz_pca_var(res.pca, geom.var = c("point", "text"))
+# Show individuals text labels only
+fviz_pca_ind(res.pca, geom.ind =  "text")
+# Change the size of arrows an labels
+fviz_pca_var(res.pca, arrowsize = 1, labelsize = 5, 
+             repel = TRUE)
+# Change points size, shape and fill color
+# Change labelsize
+fviz_pca_ind(res.pca, 
+             pointsize = 3, pointshape = 21, fill = "lightblue",
+             labelsize = 5, repel = TRUE)
+
+fviz_pca_ind(res.pca,
+             geom.ind = "point", # show points only (but not "text")
+             group.ind = IBM$Attrition, # color by groups
+             legend.title = "Groups",
+             mean.point = FALSE)
+fviz_pca_ind(res.pca,
+             geom.ind = "point", # show points only (but not "text")
+             group.ind = IBM$Attrition, # color by groups
+             legend.title = "Groups",
+             mean.point = TRUE)
+fviz_pca_var(res.pca, axes.linetype = "blank")
+
+
+
+ind.p <- fviz_pca_ind(res.pca, geom = "point", col.ind = IBM$Attrition)
+ggpubr::ggpar(ind.p,
+              title = "Principal Component Analysis",
+              subtitle = "Iris data set",
+              caption = "Source: factoextra",
+              xlab = "PC1", ylab = "PC2",
+              legend.title = "Attrition", legend.position = "top",
+              ggtheme = theme_gray(), palette = "jco"
+              )
+
+fviz_pca_biplot(res.pca, repel = TRUE,col.ind = IBM$Attrition,
+                col.var = "#2E9FDF", # Variables color
+                )
+
+fviz_pca_biplot(res.pca, 
+                col.ind = IBM$Attrition, palette = "jco", 
+                addEllipses = TRUE, label = "var",
+                col.var = "black", repel = TRUE,
+                legend.title = "Attrition") 
+
+fviz_pca_biplot(res.pca, 
+                # Fill individuals by groups
+                geom.ind = "point",
+                pointshape = 21,
+                pointsize = 2.5,
+                fill.ind = IBM$Attrition,
+                col.ind = "black",
+                # Color variable by groups
+                legend.title = list(fill = "Attrition", color = "Clusters"),
+                repel = TRUE        # Avoid label overplotting
+             )+
+  ggpubr::fill_palette("jco")+      # Indiviual fill color
+  ggpubr::color_palette("npg")      # Variable colors
+#This biplot visualization effectively combines information about both individual observations and variables in the same plot.
+#The color and shape of individual points represent different groups based on the "Attrition" variable, allowing for the visualization of any clustering or patterns in the data related to attrition status.
+#The arrows representing variables are colored and scaled based on their contributions to the principal components, providing insights into which variables contribute most significantly to each principal component and how they relate to each other and the observations.
+fviz_pca_biplot(res.pca, 
+                # Individuals
+                geom.ind = "point",
+                fill.ind = IBM$Attrition, col.ind = "black",
+                pointshape = 21, pointsize = 2,
+                palette = "jco",
+                addEllipses = TRUE,
+                # Variables
+                alpha.var ="contrib", col.var = "contrib",
+                gradient.cols = "RdYlBu",
+                
+                legend.title = list(fill = "Attrition", color = "Contrib",
+                                    alpha = "Contrib")
+                )
+
+```
+
