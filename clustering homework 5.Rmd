@@ -1,0 +1,223 @@
+---
+title: "clustering homework 5"
+author: "Meet Bhanushali"
+date: "2024-03-08"
+output: html_document
+---
+
+
+```{r clustering}
+library(cluster)
+library(readr)
+library(factoextra)
+library(magrittr)
+library(NbClust)
+
+# With made up data. 
+attrition_data <- read.csv("/Users/meet/Desktop/Assignment5_Meet.csv",row.names=1, fill = TRUE)
+attrition_data
+
+
+colnames(attrition_data) <- rownames(attrition_data)
+attrition_data
+attrition_data <- as.dist(attrition_data)
+attrition_data
+
+# Clustering
+#Single
+mat5.nn <- hclust(attrition_data, method = "single")
+plot(mat5.nn, hang=-1,xlab="Object",ylab="Distance",
+     main="Dendrogram. Nearest neighbor linkage")
+
+#Default - Complete
+mat5.fn <- hclust(attrition_data)
+plot(mat5.fn,hang=-1,xlab="Object",ylab="Distance",
+     main="Dendrogram. Farthest neighbor linkage")
+
+#Average
+mat5.avl <- hclust(attrition_data,method="average")
+plot(mat5.avl,hang=-1,xlab="Object",ylab="Distance",
+     main="Dendrogram. Group average linkage")
+
+# Lets use Canines
+
+matstd.can <- scale(attrition_data)
+
+# Creating a (Euclidean) distance matrix of the standardized data 
+dist.canine <- dist(matstd.can, method="euclidean")
+
+# Invoking hclust command (cluster analysis by single linkage method)      
+cluscanine.nn <- hclust(dist.canine, method = "single") 
+
+# Plotting vertical dendrogram      
+# create extra margin room in the dendrogram, on the bottom (Canine species' labels)
+#par(mar=c(6, 4, 4, 2) + 0.1)
+plot(as.dendrogram(cluscanine.nn),ylab="Distance between Canine species",ylim=c(0,2.5),main="Dendrogram of six canine species")
+
+
+# Euro attrition_datament Data 
+
+attrition_data <- read.csv("/Users/meet/Desktop/Assignment5_Meet.csv",row.names=1, fill = TRUE)
+attach(attrition_data)
+dim(attrition_data)
+str(attrition_data)
+#attrition_data$Category <- as.factor(attrition_data$Category)
+str(attrition_data)
+# Hirerarchic cluster analysis, Nearest-neighbor
+
+# Standardizing the data with scale()
+
+matstd.attrition_data <- scale(attrition_data[,2:6])
+# Creating a (Euclidean) distance matrix of the standardized data
+dist.attrition_data <- dist(matstd.attrition_data, method="euclidean")
+# Invoking hclust command (cluster analysis by single linkage method)
+clusattrition_data.nn <- hclust(dist.attrition_data, method = "single")
+
+plot(as.dendrogram(clusattrition_data.nn),ylab="Distance between countries",ylim=c(0,6),
+     main="Dendrogram. People attrition_dataed in nine industry groups \n  from European countries")
+
+plot(as.dendrogram(clusattrition_data.nn), xlab= "Distance between countries", xlim=c(6,0),
+     horiz = TRUE,main="Dendrogram. People attrition_dataed in nine industry groups from European countries")
+
+# We will use agnes function as it allows us to select option for data standardization, the distance measure and clustering algorithm in one single function
+
+(agn.attrition_data <- agnes(attrition_data, metric="euclidean", stand=TRUE, method = "single"))
+#View(agn.attrition_data)
+
+#  Description of cluster merging
+agn.attrition_data$merge
+
+#Dendogram
+plot(as.dendrogram(agn.attrition_data), xlab= "Distance between Countries",xlim=c(8,0),
+     horiz = TRUE,main="Dendrogram \n attrition_datament in nine industry groups in European countries")
+
+#Interactive Plots
+#plot(agn.attrition_data,ask=TRUE)
+plot(agn.attrition_data, which.plots=1)
+plot(agn.attrition_data, which.plots=2)
+plot(agn.attrition_data, which.plots=3)
+
+# K-Means Clustering
+
+matstd.attrition_data <- scale(attrition_data[,2:6])
+# K-means, k=2, 3, 4, 5, 6
+# Centers (k's) are numbers thus, 10 random sets are chosen
+
+(kmeans2.attrition_data <- kmeans(matstd.attrition_data,2,nstart =6))
+# Computing the percentage of variation accounted for. Two clusters
+perc.var.2 <- round(100*(1 - kmeans2.attrition_data$betweenss/kmeans2.attrition_data$totss),1)
+names(perc.var.2) <- "Perc. 2 clus"
+perc.var.2
+
+# Computing the percentage of variation accounted for. Three clusters
+(kmeans3.attrition_data <- kmeans(matstd.attrition_data,3,nstart =6))
+perc.var.3 <- round(100*(1 - kmeans3.attrition_data$betweenss/kmeans3.attrition_data$totss),1)
+names(perc.var.3) <- "Perc. 3 clus"
+perc.var.3
+
+# Computing the percentage of variation accounted for. Four clusters
+
+#(kmeans3.attrition_data <- kmeans(matstd.attrition_data,5,nstart = 6))
+#perc.var.4 <- round(100*(1 - kmeans3.attrition_data$betweenss/kmeans3.attrition_data$totss),1)
+#names(perc.var.4) <- "Perc. 4 clus"
+#perc.var.4
+
+
+
+
+Variance_List <- c(perc.var.2,perc.var.3)
+
+Variance_List
+plot(Variance_List)
+#
+# Saving four k-means clusters in a list
+clus1 <- matrix(names(kmeans3.attrition_data$cluster[kmeans3.attrition_data$cluster == 1]), 
+                ncol=1, nrow=length(kmeans3.attrition_data$cluster[kmeans3.attrition_data$cluster == 1]))
+colnames(clus1) <- "Cluster 1"
+
+
+clus2 <- matrix(names(kmeans3.attrition_data$cluster[kmeans3.attrition_data$cluster == 2]), 
+                ncol=1, nrow=length(kmeans3.attrition_data$cluster[kmeans3.attrition_data$cluster == 2]))
+colnames(clus2) <- "Cluster 2"
+clus3 <- matrix(names(kmeans3.attrition_data$cluster[kmeans3.attrition_data$cluster == 3]), 
+                ncol=1, nrow=length(kmeans3.attrition_data$cluster[kmeans3.attrition_data$cluster == 3]))
+colnames(clus3) <- "Cluster 3"
+clus4 <- matrix(names(kmeans3.attrition_data$cluster[kmeans3.attrition_data$cluster == 4]), 
+                ncol=1, nrow=length(kmeans3.attrition_data$cluster[kmeans3.attrition_data$cluster == 4]))
+colnames(clus4) <- "Cluster 4"
+
+list(clus1,clus2,clus3,clus4)
+detach(attrition_data)
+
+# gg Visualizations with new Dataset
+
+data("USArrests")
+
+my_data <- USArrests %>% na.omit() %>% scale()               
+
+# View the firt 3 rows
+head(my_data, n = 3)
+
+res.dist <- get_dist(USArrests, stand = TRUE, method = "pearson")
+
+# Understand the Distance Between States
+fviz_dist(res.dist, 
+          gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+
+# Lets Try to Find the Optimal Distance
+fviz_nbclust(my_data, kmeans, method = "gap_stat")
+
+set.seed(123)
+km.res <- kmeans(my_data, 3, nstart = 25)
+# Visualize
+fviz_cluster(km.res, data = my_data,
+             ellipse.type = "convex",
+             palette = "jco",
+             ggtheme = theme_minimal())
+
+# If your data has outliears , use PAM method
+pam.res <- pam(my_data, 3)
+# Visualize
+fviz_cluster(pam.res)
+
+# Hierarchial Clusiering
+res.hc <- USArrests %>% scale() %>% dist(method = "euclidean") %>%
+  hclust(method = "ward.D2")
+
+fviz_dend(res.hc, k = 4, # Cut in four groups
+          cex = 0.5, # label size
+          k_colors = c("#2E9FDF", "#00AFBB", "#E7B800", "#FC4E07"),
+          color_labels_by_k = TRUE, # color labels by groups
+          rect = TRUE # Add rectangle around groups
+          )
+# Lets see what the optimal numbers of clusers are
+# Compute
+res.nbclust <- USArrests %>% scale() %>% NbClust(distance = "euclidean", min.nc = 2, max.nc = 6, method = "complete", index ="all") 
+
+# Visualize
+#fviz_nbclust(res.nbclust, ggtheme = theme_minimal())
+
+# Quality of Clustering
+
+set.seed(123)
+# Enhanced hierarchical clustering, cut in 3 groups
+res.hc <- attrition_data[, -1] %>% scale() %>%
+  eclust("hclust", k = 2, graph = FALSE)
+
+# Visualize with factoextra
+fviz_dend(res.hc, palette = "jco",
+          rect = TRUE, show_labels = FALSE)
+
+#Inspect the silhouette plot:
+fviz_silhouette(res.hc)
+
+# Silhouette width of observations
+sil <- res.hc$silinfo$widths[, 1:3]
+
+# Objects with negative silhouette
+neg_sil_index <- which(sil[, 'sil_width'] < 0)
+sil[neg_sil_index, , drop = FALSE]
+
+
+```
+
