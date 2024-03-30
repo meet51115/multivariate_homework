@@ -1,0 +1,286 @@
+---
+title: "Social Media Data - Midterm Prep"
+author: "Meet Bhanushali"
+date: "2024-03-29"
+output: html_document
+---
+
+```{r}
+
+library(readr)
+SMC <- read_csv("/Users/meet/Desktop/social_media_cleaned.csv")
+str(SMC)
+attach(SMC)
+
+ex<-c(-1)
+result<-cor(SMC[,ex])
+result 
+
+SMC_pca <- prcomp(SMC[,ex],scale=TRUE)
+SMC_pca
+summary(SMC_pca)
+
+# Eigenvalues are sdev^2
+(eigen_SMC <- SMC_pca$sdev^2)
+names(eigen_SMC) <- paste("PC",1:9,sep="")
+eigen_SMC
+sumlambdas <- sum(eigen_SMC)
+sumlambdas
+propvar <- eigen_SMC/sumlambdas
+propvar
+cumvar_SMC <- cumsum(propvar)
+cumvar_SMC
+matlambdas <- rbind(eigen_SMC,propvar,cumvar_SMC)
+rownames(matlambdas) <- c("Eigenvalues","Prop. variance","Cum. prop. variance")
+round(matlambdas,4)
+summary(SMC_pca)
+SMC_pca$rotation
+print(SMC_pca)
+plot(SMC_pca)
+
+
+#PC1 captures the most variance in the data, indicating a dominant pattern or trend in social media usage among  class (NUN18).
+#The cumulative proportion of variance shows that including the first few principal components can explain a substantial portion of the total variance in social media behavior.
+
+
+
+library(readr)
+library(cluster)
+library(factoextra)
+library(magrittr)
+library(NbClust)
+
+# With made up data. 
+SMC_data <- read.csv("/Users/meet/Desktop/social_media_cleaned.csv",row.names=1, fill = TRUE)
+SMC_data
+
+colnames(SMC_data)
+rownames(SMC_data)
+SMC_data <- as.dist(SMC_data)
+SMC_data
+colnames(SMC_data) <- rownames(SMC_data)
+SMC_data
+
+
+# Clustering
+#Single
+dissimilarity_matrix <- dist(SMC_data)
+mat5.nn <- hclust(dissimilarity_matrix, method = "single")
+plot(mat5.nn, hang=-1,xlab="Object",ylab="Distance",
+     main="Dendrogram. Nearest neighbor linkage")
+
+#Default - Complete
+mat5.fn <- hclust(dissimilarity_matrix)
+plot(mat5.fn,hang=-1,xlab="Object",ylab="Distance",
+     main="Dendrogram. Farthest neighbor linkage")
+
+#Average
+mat5.avl <- hclust(dissimilarity_matrix,method="average")
+plot(mat5.avl,hang=-1,xlab="Object",ylab="Distance",
+     main="Dendrogram. Group average linkage")
+
+# Lets use Canines
+
+matstd.can <- scale(SMC_data)
+
+# Creating a (Euclidean) distance matrix of the standardized data 
+dist.canine <- dist(matstd.can, method="euclidean")
+
+# Invoking hclust command (cluster analysis by single linkage method)      
+cluscanine.nn <- hclust(dist.canine, method = "single") 
+
+# Plotting vertical dendrogram      
+# create extra margin room in the dendrogram, on the bottom (Canine species' labels)
+#par(mar=c(6, 4, 4, 2) + 0.1)
+plot(as.dendrogram(cluscanine.nn),ylab="Distance between Canine species",ylim=c(0,2.5),main="Dendrogram of six canine species")
+
+
+# Euro SMC_datament Data 
+
+SMC_data <- read.csv("/Users/meet/Desktop/social_media_cleaned.csv",row.names=1, fill = TRUE)
+attach(SMC_data)
+dim(SMC_data)
+str(SMC_data)
+#SMC_data$Category <- as.factor(SMC_data$Category)
+str(SMC_data)
+# Hirerarchic cluster analysis, Nearest-neighbor
+
+# Standardizing the data with scale()
+
+matstd.SMC_data <- scale(SMC_data[,2:6])
+# Creating a (Euclidean) distance matrix of the standardized data
+dist.SMC_data <- dist(matstd.SMC_data, method="euclidean")
+# Invoking hclust command (cluster analysis by single linkage method)
+clusSMC_data.nn <- hclust(dist.SMC_data, method = "single")
+
+plot(as.dendrogram(clusSMC_data.nn),ylab="Distance between countries",ylim=c(0,6),
+     main="Dendrogram. People SMC_dataed in nine industry groups \n  from European countries")
+
+plot(as.dendrogram(clusSMC_data.nn), xlab= "Distance between countries", xlim=c(6,0),
+     horiz = TRUE,main="Dendrogram. People SMC_dataed in nine industry groups from European countries")
+
+# We will use agnes function as it allows us to select option for data standardization, the distance measure and clustering algorithm in one single function
+
+(agn.SMC_data <- agnes(SMC_data, metric="euclidean", stand=TRUE, method = "single"))
+#View(agn.SMC_data)
+
+#  Description of cluster merging
+agn.SMC_data$merge
+
+#Dendogram
+plot(as.dendrogram(agn.SMC_data), xlab= "Distance between Countries",xlim=c(8,0),
+     horiz = TRUE,main="Dendrogram \n SMC_datament in nine industry groups in European countries")
+
+#Interactive Plots
+#plot(agn.SMC_data,ask=TRUE)
+plot(agn.SMC_data, which.plots=1)
+plot(agn.SMC_data, which.plots=2)
+plot(agn.SMC_data, which.plots=3)
+
+# K-Means Clustering
+
+matstd.SMC_data <- scale(SMC_data[,2:6])
+# K-means, k=2, 3, 4, 5, 6
+# Centers (k's) are numbers thus, 10 random sets are chosen
+
+(kmeans2.SMC_data <- kmeans(matstd.SMC_data,2,nstart =6))
+# Computing the percentage of variation accounted for. Two clusters
+perc.var.2 <- round(100*(1 - kmeans2.SMC_data$betweenss/kmeans2.SMC_data$totss),1)
+names(perc.var.2) <- "Perc. 2 clus"
+perc.var.2
+
+# Computing the percentage of variation accounted for. Three clusters
+(kmeans3.SMC_data <- kmeans(matstd.SMC_data,3,nstart =6))
+perc.var.3 <- round(100*(1 - kmeans3.SMC_data$betweenss/kmeans3.SMC_data$totss),1)
+names(perc.var.3) <- "Perc. 3 clus"
+perc.var.3
+
+# Computing the percentage of variation accounted for. Four clusters
+
+#(kmeans3.SMC_data <- kmeans(matstd.SMC_data,5,nstart = 6))
+#perc.var.4 <- round(100*(1 - kmeans3.SMC_data$betweenss/kmeans3.SMC_data$totss),1)
+#names(perc.var.4) <- "Perc. 4 clus"
+#perc.var.4
+
+
+
+
+Variance_List <- c(perc.var.2,perc.var.3)
+
+Variance_List
+plot(Variance_List)
+#
+# Saving four k-means clusters in a list
+clus1 <- matrix(names(kmeans3.SMC_data$cluster[kmeans3.SMC_data$cluster == 1]), 
+                ncol=1, nrow=length(kmeans3.SMC_data$cluster[kmeans3.SMC_data$cluster == 1]))
+colnames(clus1) <- "Cluster 1"
+
+
+clus2 <- matrix(names(kmeans3.SMC_data$cluster[kmeans3.SMC_data$cluster == 2]), 
+                ncol=1, nrow=length(kmeans3.SMC_data$cluster[kmeans3.SMC_data$cluster == 2]))
+colnames(clus2) <- "Cluster 2"
+clus3 <- matrix(names(kmeans3.SMC_data$cluster[kmeans3.SMC_data$cluster == 3]), 
+                ncol=1, nrow=length(kmeans3.SMC_data$cluster[kmeans3.SMC_data$cluster == 3]))
+colnames(clus3) <- "Cluster 3"
+clus4 <- matrix(names(kmeans3.SMC_data$cluster[kmeans3.SMC_data$cluster == 4]), 
+                ncol=1, nrow=length(kmeans3.SMC_data$cluster[kmeans3.SMC_data$cluster == 4]))
+colnames(clus4) <- "Cluster 4"
+
+list(clus1,clus2,clus3,clus4)
+
+#it seems i have moderate levels of engagement across various social media platforms, with notable activity on Instagram, WhatsApp/WeChat, and YouTube.
+#my usage of LinkedIn, Snapchat, YouTube, and Reddit is relatively lower compared to some classmates but still present.
+# i have a neutral feeling (a score of 3) throughout the week, suggesting a balanced emotional state overall.
+#my social media usage and emotional experience are within the range observed across the class.
+#it appear i have a balanced approach to social media, neither excessively engaged nor entirely disengaged.
+#the emotional state reflects the diversity observed in the class, with some individuals reporting higher or lower emotional states.
+#my profile suggests i may be an average social media user within the class, neither standing out for high activity nor exhibiting minimal engagement.
+
+
+
+library(psych)
+
+SMC_factor <- read.csv("/Users/meet/Desktop/social_media_cleaned.csv", row.names=1)
+
+attach(SMC_factor)
+SMC_factor
+fit.pc <- principal(SMC_factor, nfactors=4, rotate="varimax")
+fit.pc
+round(fit.pc$values, 3)
+fit.pc$loadings
+#Choosing 4 factors in this dataset in PCA strikes a balance between reducing dimensionality and capturing sufficient variance, ensuring interpretability, and maintaining a simple structure in the data.
+
+# Loadings with more digits
+for (i in c(1,3,2,4)) { print(fit.pc$loadings[[1,i]])}
+# Communalities
+fit.pc$communality
+# Rotated factor scores, Notice the columns ordering: RC1, RC3, RC2 and RC4
+fit.pc$scores
+# Play with FA utilities
+
+fa.parallel(SMC_factor) # See factor recommendation
+fa.plot(fit.pc) # See Correlations within Factors
+fa.diagram(fit.pc) # Visualize the relationship
+vss(SMC_factor) # See Factor recommendations for a simple structure
+
+# Computing Correlation Matrix
+corrm.emp <- cor(SMC_factor)
+corrm.emp
+plot(corrm.emp)
+SMC_factor_pca <- prcomp(SMC_factor, scale=TRUE)
+summary(SMC_factor_pca)
+plot(SMC_factor_pca)
+
+# A table containing eigenvalues and %'s accounted, follows. Eigenvalues are the sdev^2
+(eigen_SMC_factor <- round(SMC_factor_pca$sdev^2,3))
+round(fit.pc$values, 3)
+names(eigen_SMC_factor) <- paste("PC",1:9,sep="")
+eigen_SMC_factor
+sumlambdas <- sum(eigen_SMC_factor)
+sumlambdas
+propvar <- round(eigen_SMC_factor/sumlambdas,2)
+propvar
+cumvar_SMC_factor <- cumsum(propvar)
+cumvar_SMC_factor
+matlambdas <- rbind(eigen_SMC_factor,propvar,cumvar_SMC_factor)
+matlambdas
+rownames(matlambdas) <- c("Eigenvalues","Prop. variance","Cum. prop. variance")
+rownames(matlambdas)
+eigvec.emp <- SMC_factor_pca$rotation
+print(SMC_factor_pca)
+
+# Taking the first four PCs to generate linear combinations for all the variables with four factors
+pcafactors.emp <- eigvec.emp[,1:4]
+pcafactors.emp
+
+# Multiplying each column of the eigenvector’s matrix by the square-root of the corresponding eigenvalue in order to get the factor loadings
+unrot.fact.emp <- sweep(pcafactors.emp,MARGIN=2,SMC_factor_pca$sdev[1:4],`*`)
+unrot.fact.emp
+# Computing communalities
+communalities.emp <- rowSums(unrot.fact.emp^2)
+communalities.emp
+
+
+# Performing the varimax rotation. The default in the varimax function is norm=TRUE thus, Kaiser normalization is carried out
+rot.fact.emp <- varimax(unrot.fact.emp)
+#View(unrot.fact.emp)
+rot.fact.emp
+# The print method of varimax omits loadings less than abs(0.1). In order to display all the loadings, it is necessary to ask explicitly the contents of the object $loadings
+fact.load.emp <- rot.fact.emp$loadings[1:9,1:4]
+fact.load.emp
+# Computing the rotated factor scores for the 30 European Countries. Notice that signs are reversed for factors F2 (PC2), F3 (PC3) and F4 (PC4)
+scale.emp <- scale(SMC_factor)
+scale.emp
+as.matrix(scale.emp)%*%fact.load.emp%*%solve(t(fact.load.emp)%*%fact.load.emp)
+
+# PCA Results include eigenvalues (variance explained by each component), factor loadings (correlations between variables and components), communalities (proportion of variance in each variable explained by components), and factor scores.
+# Varimax Rotation Results display loadings of variables on rotated factors, simplifying interpretation by maximizing variance of squared loadings within each factor.
+
+# Displaying columns that go into each factor
+colnames(fact.load.emp)
+
+#I have high scores on a component and strong loadings on a factor related to frequency of social media use, it suggests that you are highly engaged in using social media platforms frequently.
+#Similarly, other components or factors can represent different dimensions of social media behavior, such as types of platforms used, content consumption habits, etc.
+
+```
+
