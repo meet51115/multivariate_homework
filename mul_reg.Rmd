@@ -1,0 +1,124 @@
+---
+title: "multiple regression"
+author: "Meet Bhanushali"
+date: "2024-04-12"
+output: html_document
+---
+
+
+```{r}
+library(readr)
+attr <- read_csv("/Users/meet/Desktop/Attrition Data copy.csv")
+str(attr)
+
+fit <- lm(MonthlyIncome~Education+WorkLifeBalance+Age+YearsAtCompany+NumCompaniesWorked, data=attr)
+#show the results
+summary(fit)
+#Summary has three sections. Section1: How well does the model fit the data (before Coefficients). Section2: Is the hypothesis supported? (until sifnif codes). Section3: How well does data fit the model (again).
+
+#R-square of this model is 0.4006, which is not closer to 1. So we can say that this model is not a perfect fit.
+#Also the significance level is 95% for this model, i.e alpha = 0.05. Here the p-value<alpha. Hence, it is insignificant
+#Data fits moderately in the model.
+
+# Useful Helper Functions
+coefficients(fit)
+library(GGally)
+ggpairs(data=attr, title="Attrition Data")
+confint(fit,level=0.95)
+fitted(fit)
+residuals(fit)
+#Anova Table
+anova(fit)
+vcov(fit)
+cov2cor(vcov(fit))
+temp <- influence.measures(fit)
+temp
+plot(fit)
+
+# Assessing Outliers
+library(car)
+outlierTest(fit)
+leveragePlots(fit) # leverage plots
+# Influential Observations
+# added variable plots
+avPlots(fit)
+# Cook's D plot
+# identify D values > 4/(n-k-1)
+cutoff <- 4/((nrow(attr)-length(fit$coefficients)-2))
+plot(fit, which=4, cook.levels=cutoff)
+# Influence Plot
+influencePlot(fit, id.method="identify", main="Influence Plot", sub="Circle size is proportial to Cook's Distance" )
+# Normality of Residuals
+stud_res <- rstudent(fit)  # Get studentized residuals
+# qq plot for studentized resid
+qqPlot(stud_res, main = "QQ Plot of Studentized Residuals")
+
+# distribution of studentized residuals
+library(MASS)
+sresid <- studres(fit)
+hist(sresid, freq=FALSE,
+     main="Distribution of Studentized Residuals")
+xfit<-seq(min(sresid),max(sresid),length=40)
+yfit<-dnorm(xfit)
+plot(xfit, yfit, type="l", col="blue", lwd=2, ylab="Density", xlab="Studentized Residuals")  
+lines(xfit, yfit)
+#Non-constant Error Variance
+# Evaluate homoscedasticity
+# non-constant error variance test
+ncvTest(fit)
+# plot studentized residuals vs. fitted values
+spreadLevelPlot(fit)
+#Multi-collinearity
+# Evaluate Collinearity
+vif(fit) # variance inflation factors
+sqrt(vif(fit)) > 2 # problem?
+#Nonlinearity
+# component + residual plot
+crPlots(fit)
+
+#Non-independence of Errors
+# Test for Autocorrelated Errors
+durbinWatsonTest(fit)
+
+#Interpretation from Durbin Watson Test:
+#The D-W statistic (2.04) falls within the inconclusive zone (typically between 1.5 and 2.5). This makes it difficult to definitively reject or accept the null hypothesis.
+#The p-value (0.374) is greater than significance level 0.05. This suggests that we fail to reject the null hypothesis at this significance level.
+
+
+#Residual Analysis: The QQ plot shows a slight curvature, particularly in the tails. The tails of the data points fall slightly outside the diagonal reference line, suggesting that the residuals might have heavier tails than a normal distribution. This indicates potential non-normality.
+
+# Global test of model assumptions
+library(gvlma)
+gvmodel <- gvlma(fit)
+summary(gvmodel)
+fit
+summary(fit)
+fit1 <- fit
+fit2 <- lm(MonthlyIncome~Education+WorkLifeBalance+Age, data = attr)
+# compare models
+anova(fit1, fit2)
+step <- stepAIC(fit, direction="both")
+step$anova # display results
+library(leaps)
+leaps<-regsubsets(MonthlyIncome~Education+WorkLifeBalance+Age+YearsAtCompany+NumCompaniesWorked+DistanceFromHome,data=attr,nbest=10)
+# view results
+plot(leaps)
+plot(leaps,scale="r2")
+plot(leaps,scale="bic")
+summary(leaps)
+library(relaimpo)
+calc.relimp(fit,type=c("lmg","last","first","pratt"),
+            rela=TRUE)
+# Bootstrap Measures of Relative Importance (1000 samples)
+boot <- boot.relimp(fit, b = 1000, type = c("lmg",
+                                            "last", "first", "pratt"), rank = TRUE,
+                    diff = TRUE, rela = TRUE)
+booteval.relimp(boot) # print result
+plot(booteval.relimp(boot,sort=TRUE)) # plot result
+summary(fit)
+predict.lm(fit, data.frame(Education=4,WorkLifeBalance=3,Age=48,YearsAtCompany=15,NumCompaniesWorked=3) )
+
+#Prediction: For the characteristics stated above, model has predicted that monthly income for this employee should be 11056.92 based on its education, work life balance, age, years at company and total numbers of companies worked for.
+
+```
+
