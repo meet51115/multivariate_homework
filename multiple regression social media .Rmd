@@ -1,0 +1,129 @@
+---
+title: "multiple regression social media"
+author: "Meet Bhanushali"
+date: "2024-04-14"
+output: html_document
+---
+
+
+
+```{r}
+
+
+library(readr)
+attr <- read_csv("/Users/meet/Desktop/social_media_cleaned.csv")
+str(attr)
+
+fit <- lm(entire_week_feeling~Instagram+LinkedIn+SnapChat+Whatsapp_Wechat+youtube+OTT, data=attr)
+#show the results
+summary(fit)
+#Summary has three sections. Section1: How well does the model fit the data (before Coefficients). Section2: Is the hypothesis supported? (until sifnif codes). Section3: How well does data fit the model (again).
+
+#R-square of this model is 0.2425, which is not closer to 1. So we can say that this model is not a perfect fit.
+#Also the significance level is 95% for this model, i.e alpha = 0.05. Here the p-value > alpha. Hence, it is significant
+#Data fits moderately in the model.
+
+# Useful Helper Functions
+coefficients(fit)
+library(GGally)
+ggpairs(data=attr, title="Social Media", cardinality_threshold = 22)
+confint(fit,level=0.95)
+fitted(fit)
+residuals(fit)
+#Anova Table
+anova(fit)
+vcov(fit)
+cov2cor(vcov(fit))
+temp <- influence.measures(fit)
+temp
+plot(fit)
+
+# Assessing Outliers
+library(car)
+outlierTest(fit)
+leveragePlots(fit) # leverage plots
+# Influential Observations
+# added variable plots
+avPlots(fit)
+# Cook's D plot
+# identify D values > 4/(n-k-1)
+cutoff <- 4/((nrow(attr)-length(fit$coefficients)-2))
+plot(fit, which=4, cook.levels=cutoff)
+# Influence Plot
+influencePlot(fit, id.method="identify", main="Influence Plot", sub="Circle size is proportial to Cook's Distance" )
+# Normality of Residuals
+stud_res <- rstudent(fit)  # Get studentized residuals
+# qq plot for studentized resid
+qqPlot(stud_res, main = "QQ Plot of Studentized Residuals")
+
+# distribution of studentized residuals
+library(MASS)
+sresid <- studres(fit)
+hist(sresid, freq=FALSE,
+     main="Distribution of Studentized Residuals")
+xfit<-seq(min(sresid),max(sresid),length=40)
+yfit<-dnorm(xfit)
+plot(xfit, yfit, type="l", col="blue", lwd=2, ylab="Density", xlab="Studentized Residuals")  
+lines(xfit, yfit)
+#Non-constant Error Variance
+# Evaluate homoscedasticity
+# non-constant error variance test
+ncvTest(fit)
+# plot studentized residuals vs. fitted values
+spreadLevelPlot(fit)
+#Multi-collinearity
+# Evaluate Collinearity
+vif(fit) # variance inflation factors
+sqrt(vif(fit)) > 2 
+#Nonlinearity
+# component + residual plot
+crPlots(fit)
+
+#Non-independence of Errors
+# Test for Autocorrelated Errors
+durbinWatsonTest(fit)
+
+#Interpretation from Durbin Watson Test:
+#The D-W statistic (1.9604) falls within the inconclusive zone (typically between 1.5 and 2.5). This makes it difficult to definitively reject or accept the null hypothesis.
+#The p-value (0.982) is greater than significance level 0.05. This suggests that we fail to reject the null hypothesis at this significance level.
+
+
+#Residual Analysis: The QQ plot shows residuals aren't normally distributed (points deviate from the line).
+
+# Global test of model assumptions
+library(gvlma)
+gvmodel <- gvlma(fit)
+summary(gvmodel)
+fit
+summary(fit)
+fit1 <- fit
+fit2 <- lm(entire_week_feeling~Instagram+LinkedIn+Whatsapp_Wechat+youtube, data = attr)
+# compare models
+anova(fit1, fit2)
+step <- stepAIC(fit, direction="both")
+step$anova # display results
+library(leaps)
+leaps<-regsubsets(entire_week_feeling~Instagram+LinkedIn+SnapChat+Whatsapp_Wechat+youtube+OTT,data=attr,nbest=10)
+# view results
+plot(leaps)
+plot(leaps,scale="r2")
+plot(leaps,scale="bic")
+summary(leaps)
+library(relaimpo)
+calc.relimp(fit,type=c("lmg","last","first","pratt"),
+            rela=TRUE)
+# Bootstrap Measures of Relative Importance (1000 samples)
+boot <- boot.relimp(fit, b = 1000, type = c("lmg",
+                                            "last", "first", "pratt"), rank = TRUE,
+                    diff = TRUE, rela = TRUE)
+booteval.relimp(boot) # print result
+plot(booteval.relimp(boot,sort=TRUE)) # plot result
+summary(fit)
+predict.lm(fit, data.frame(Instagram=4,LinkedIn=1,SnapChat=1,Whatsapp_Wechat=11,youtube=5,OTT=4) )
+
+#Prediction: For the characteristics stated above, model has predicted that user feeling is rated around 3.18 based on its usage of Instagram, LinkedIn, Snapchat, Whatsapp/Wechat, Youtube & OTT.
+
+
+
+```
+
