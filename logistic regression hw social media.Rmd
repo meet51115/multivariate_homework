@@ -1,0 +1,150 @@
+---
+title: "logistic regression social media"
+author: "Meet Bhanushali"
+date: "2024-04-18"
+output: html_document
+---
+
+
+
+```{r}
+
+library(ggplot2)
+library(cowplot)
+library(regclass)
+library(caret)
+library(e1071)
+library(pROC)
+
+
+#Predicting the Impact on Feeling of user based on Social Media Usage
+
+smc_data <- read.csv("/Users/meet/Desktop/social_media_cleaned.csv",row.names=1, fill = TRUE)
+smc_data
+head(smc_data)
+str(smc_data)
+
+smc_data$feeling_rank <- as.factor(smc_data$feeling_rank)
+smc_data$Instagram <- as.factor(smc_data$Instagram)
+smc_data$LinkedIn <- as.factor(smc_data$LinkedIn)
+smc_data$Whatsapp_Wechat <- as.factor(smc_data$Whatsapp_Wechat)
+smc_data$youtube <- as.factor(smc_data$youtube)
+
+nrow(smc_data)
+
+## Exploratory Analysis
+
+xtabs(~ feeling_rank + Instagram, data=smc_data)
+xtabs(~ feeling_rank + LinkedIn, data=smc_data)
+xtabs(~ feeling_rank + Whatsapp_Wechat, data=smc_data)
+xtabs(~ feeling_rank + youtube, data=smc_data)
+
+#Model Development
+logistic_simple <- glm(feeling_rank~Instagram+LinkedIn+Whatsapp_Wechat+youtube, data=smc_data, family="binomial")
+summary(logistic_simple)
+
+#None of the predictor variables ("Instagram", "LinkedIn", "Snapchat", etc.) have coefficients with statistically significant p-values (all p-values are 1). This suggests that there is insufficient evidence to conclude that any of these variables have a significant impact on mood productivity.
+
+
+#For instagram = 0.17, odds of feeling_rank to be good are:
+good.log.odds <- log(0 / 1)
+good.log.odds
+
+predicted.smc_data <- data.frame(probability.of.feeling_rank=logistic_simple$fitted.values,Instagram=smc_data$Instagram)
+predicted.smc_data
+
+
+xtabs(~ probability.of.feeling_rank + Instagram, data=predicted.smc_data)
+logistic <- glm(feeling_rank ~ ., data=smc_data, family="binomial")
+summary(logistic)
+
+
+## Now calculate the overall "Pseudo R-squared" and its p-value
+ll.null <- logistic$null.deviance/-2
+ll.proposed <- logistic$deviance/-2
+(ll.null - ll.proposed) / ll.null
+
+#The Pseudo R-squared measures the proportion of total variance in the response variable that is explained by the model.
+#The output of 1 indicates that the model fits the data perfectly. However, its very rare when the model could fit perfectly, signifying an overfitting model.
+
+
+## The p-value for the R^2
+1 - pchisq(2*(ll.proposed - ll.null), df=(length(logistic$coefficients)-1))
+predicted.smc_data <- data.frame(probability.of.feeling_rank=logistic$fitted.values,feeling_rank=smc_data$feeling_rank)
+predicted.smc_data <- predicted.smc_data[order(predicted.smc_data$probability.of.feeling_rank, decreasing=FALSE),]
+predicted.smc_data$rank <- 1:nrow(predicted.smc_data)
+
+#As the p-value for R^2 is greater than 0.05, we fail to reject the null hypothesis which is the model is better than the null model (without predictors).
+
+#Residuals vs Fitted are a great way to identify heteroscedasticity via pattern recognition, however our model does not seem to have any.
+#Residuals Vs Leverage help in identifying potential problems with the regression model. Points on the right of the plot have a great influence on the model's parameters. Points with a Cook's Distance greater than highlighted threshold have a greater influence on the model.
+
+ggplot(data=predicted.smc_data, aes(x=rank, y=probability.of.feeling_rank)) +
+geom_point(aes(color=feeling_rank), alpha=1, shape=4, stroke=2) +
+xlab("Index") +
+ylab("Predicted probability of feeling_rank")
+
+#This plot highlights the performace of our model.
+#It can be clearly inferred that the model performs poorly.
+
+# From Caret
+pdata <- predict(logistic,newdata=smc_data,type="response" )
+pdata
+smc_data$feeling_rank
+pdataN <- as.factor(ifelse(test=as.numeric(pdata>0.5) == 0, yes="Good", no="Bad"))
+
+
+#From e1071::
+confusionMatrix(pdataN, smc_data$feeling_rank)
+# From pROC
+roc(smc_data$feeling_rank,logistic$fitted.values,plot=TRUE)
+par(pty = "s")
+roc(smc_data$feeling_rank,logistic$fitted.values,plot=TRUE)
+
+
+roc(smc_data$feeling_rank,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE)
+roc(smc_data$feeling_rank,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage")
+
+roc(smc_data$feeling_rank,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4)
+roc(smc_data$feeling_rank,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4)
+## If we want to find out the optimal threshold we can store the
+## data used to make the ROC graph in a variable...
+roc.info <- roc(smc_data$feeling_rank, logistic$fitted.values, legacy.axes=TRUE)
+str(roc.info)
+## tpp = true positive percentage
+## fpp = false positive precentage
+roc.df <- data.frame(tpp=roc.info$sensitivities*100, fpp=(1 - roc.info$specificities)*100,thresholds=roc.info$thresholds)
+roc.df
+head(roc.df) 
+## head() will show us the values for the upper right-hand corner of the ROC graph, when the threshold is so low
+## Thus TPP = 100% and FPP = 100%
+tail(roc.df) 
+
+## tail() will show us the values for the lower left-hand corner
+## of the ROC graph, when the threshold is so high (infinity)
+## that every single sample is called "not obese".
+## Thus, TPP = 0% and FPP = 0%
+## now let's look at the thresholds between TPP 60% and 80%
+roc.df[roc.df$tpp > 60 & roc.df$tpp < 80,]
+roc(smc_data$feeling_rank,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, percent=TRUE)
+roc(smc_data$feeling_rank,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, percent=TRUE, print.auc=TRUE)
+roc(smc_data$feeling_rank,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, percent=TRUE, print.auc=TRUE, partial.auc=c(100, 90), auc.polygon = TRUE, auc.polygon.col = "#377eb822", print.auc.x=45)
+# Lets do two roc plots to understand which model is better
+roc(smc_data$feeling_rank, logistic_simple$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, print.auc=TRUE)
+# Lets add the other graph
+plot.roc(smc_data$feeling_rank, logistic$fitted.values, percent=TRUE, col="#4daf4a", lwd=4, print.auc=TRUE, add=TRUE, print.auc.y=40)
+legend("bottomright", legend=c("Simple", "Non Simple"), col=c("#377eb8", "#4daf4a"), lwd=4) 
+
+
+
+
+
+
+```
+**Inference:**
+*Weekly Feeling - Bad* - Since we are aiming to see how many students felt bad in entire week, based on their social media usage.
+
+* The accuracy of the model is 1 showcasing that it is a well performing model. However, such a high accuracy is a clear indication of model overfitting.
+
+#SUMMARY
+* We can infer that due to the small dataset, it was difficult to fit the model well which led to an under-performing model.
