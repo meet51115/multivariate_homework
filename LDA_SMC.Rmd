@@ -1,0 +1,152 @@
+---
+title: "LDA social media hw"
+author: "Meet Bhanushali"
+date: "2024-04-25"
+output: html_document
+---
+
+
+
+```{r}
+library(MASS)
+library(ggplot2)
+library(memisc)
+library(ROCR)
+library(dplyr)
+library(klaR)
+ 
+smca <- read.csv("/Users/meet/Desktop/social_media_cleaned.csv")
+features <- c("Instagram", "LinkedIn", "SnapChat", "Twitter", "Whatsapp_Wechat", "youtube", "OTT", "Reddit")
+head(smca)
+dim(smca)
+str(smca)
+smca.data <- as.matrix(smca[,c(3:10)])
+row.names(smca.data) <- smca$character
+smca_raw <- cbind(smca.data, as.numeric(as.factor(smca$feeling_rank)) - 1)
+
+# Map numeric values to categorical labels
+
+colnames(smca_raw)[2] <- "feeling_rank"
+smp_size_raw <- floor(0.75 * nrow(smca_raw))
+train_ind_raw <- sample(nrow(smca_raw), size = smp_size_raw)
+train_raw.df <- as.data.frame(smca_raw[train_ind_raw, ])
+test_raw.df <- as.data.frame(smca_raw[-train_ind_raw, ])
+smca_raw.lda <- lda(formula = train_raw.df$feeling_rank ~ ., data = train_raw.df)
+smca_raw.lda
+summary(smca_raw.lda)
+print(smca_raw.lda)
+smca_raw.lda.predict <- predict(smca_raw.lda, newdata = test_raw.df)
+smca_raw.lda.predict$class
+smca_raw.lda.predict$x
+
+
+# Get the posteriors as a dataframe.
+smca_raw.lda.predict.posteriors <- as.data.frame(smca_raw.lda.predict$posterior)
+# Map numeric values to categorical labels
+test_raw.df$feeling_rank <- ifelse(test_raw.df$feeling_rank == 0, "No", "Yes")
+
+pred <- prediction(smca_raw.lda.predict.posteriors[,2], test_raw.df$feeling_rank)
+
+roc.perf = performance(pred, measure = "tpr", x.measure = "fpr")
+auc.train <- performance(pred, measure = "auc")
+auc.train <- auc.train@y.values
+plot(roc.perf)
+abline(a=0, b= 1)
+text(x = .25, y = .65 ,paste("AUC = ", round(auc.train[[1]],3), sep = ""))
+
+#ROC Curve: The ROC curve represents the trade-off between TPR and FPR for the model at various classification thresholds. As the threshold for classifying an instance as positive becomes stricter, the TPR generally decreases while the FPR also decreases. The ROC curve depicts this relationship.
+#AUC: The Area Under the Curve (AUC) represents the total area under the ROC curve. It provides a single metric summarizing the model's overall performance across all possible thresholds.
+
+
+# Iris LDA
+data("iris")
+iris
+head(iris, 3)
+str(iris)
+r <- lda(formula = Species ~ ., data = iris)
+r
+summary(r)
+print(r)
+r$counts
+r$means
+r$scaling
+r$prior
+r$lev
+r$svd
+#singular values (svd) that gives the ratio of the between- and within-group standard deviations on the linear discriminant variables.
+r$N
+r$call
+(prop = r$svd^2/sum(r$svd^2))
+#we can use the singular values to compute the amount of the between-group variance that is explained by each linear discriminant. In our example we see that the first linear discriminant explains more than 99% of the between-group variance in the iris dataset.
+r2 <- lda(formula = Species ~ ., data = iris, CV = TRUE)
+r2
+head(r2$class)
+#the Maximum a Posteriori Probability (MAP) classification (a factor)
+#posterior: posterior probabilities for the classes.
+head(r2$posterior, 3)
+train <- sample(1:150, 75)
+r3 <- lda(Species ~ ., # training model
+          iris,
+          prior = c(1,1,1)/3,
+          subset = train)
+plda = predict(object = r3, # predictions
+               newdata = iris[-train, ])
+head(plda$class)
+head(plda$posterior, 6) # posterior prob.
+head(plda$x, 3)
+plot(r)
+plot(r3)
+r <- lda(Species ~ .,
+         iris,
+         prior = c(1,1,1)/3)
+prop.lda = r$svd^2/sum(r$svd^2)
+plda <- predict(object = r,
+                newdata = iris)
+dataset = data.frame(species = iris[,"Species"],lda = plda$x)
+ggplot(dataset) + geom_point(aes(lda.LD1, lda.LD2, colour = species, shape = species), size = 2.5) + labs(x = paste("LD1 (", percent(prop.lda[1]), ")", sep=""),y = paste("LD2 (", percent(prop.lda[2]), ")", sep=""))
+
+#LDA is likely a good dimensionality reduction technique for this dataset, as it has been able to project the higher-dimensional data (four features: sepal length, sepal width, petal length, and petal width) onto a two-dimensional space (the plane of the scatter plot) while still maintaining some separability between the classes.
+#The petal length appears to be a more important feature for classification than the sepal width, since the data points are more separated along the petal length axis.
+
+
+# lets look at another way to divide a dataset
+
+set.seed(101) # Nothing is random!!
+sample_n(iris,10)
+# Lets take a sample of 75/25 like before. Dplyr preserves class. 
+training_sample <- sample(c(TRUE, FALSE), nrow(iris), replace = T, prob = c(0.75,0.25))
+train <- iris[training_sample, ]
+test <- iris[!training_sample, ]
+#lets run LDA like before
+lda.iris <- lda(Species ~ ., train)
+# do a quick plot to understand how good the model is
+plot(lda.iris, col = as.integer(train$Species))
+# Sometime bell curves are better
+plot(lda.iris, dimen = 1, type = "b")
+# THis plot shows the essense of LDA. It puts everything on a line and finds cutoffs. 
+
+#Accuracy: Accuracy is a general metric for classification performance, calculated as the ratio of correctly classified instances (TP + TN) to the total number of instances. In this case, accuracy = (TP + TN) / Total = (35 + 40) / 100 = 75%.
+#Overall, the confusion matrix suggests that the model performs moderately well in classifying "Good" and "Bad" instances. However, there are some misclassifications 
+
+# Partition plots
+partimat(Species ~ Sepal.Length + Sepal.Width + Petal.Length + Petal.Width, data=train, method="lda")
+
+# Lets focus on accuracy. Table function
+lda.train <- predict(lda.iris)
+train$lda <- lda.train$class
+table(train$lda,train$Species)
+# running accuracy on the training set shows how good the model is. It is not an indication of "true" accuracy. We will use the test set to approximate accuracy
+lda.test <- predict(lda.iris,test)
+test$lda <- lda.test$class
+table(test$lda,test$Species)
+
+
+# Wilk's Lambda and F test for each variablw
+m <- manova(cbind(Sepal.Length,Sepal.Width,Petal.Length,Petal.Width)~Species,data=iris)
+summary(m,test="Wilks")
+summary(m,test="Pillai")
+summary.aov(m)
+
+
+```
+
