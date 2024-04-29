@@ -1,0 +1,424 @@
+---
+title: "project social media"
+author: "Meet Bhanushali"
+date: "2024-04-29"
+output: html_document
+---
+
+# Data Dictionary
+
+* character - Name of the Student
+* feeling_rank - 1 indicates, feeling was good for the week and vice versa
+* Instagram - Time spent on Instagram per week(hrs)
+* Linkedin - Time spent on LinkedIn per week(hrs)
+* Snapchat - Time spent on Snapchat per week(hrs)
+* Twitter - Time spent on Twitter per week(hrs)
+* Whatsapp_wechat - Time spent on whatsapp or wechat per week(hrs)
+* Youtube - Time spent on Youtube per week(hrs)
+* OTT - Time spent on OTT per week(hrs)
+* Reddit - Time spent on Reddit per week(hrs)
+* entire week feeling - score of the feeling of the user	
+
+
+
+
+```{r}
+
+library(readr)
+library(MVA)
+library(HSAUR2)
+library(SciViews)
+library(scatterplot3d)
+library(car)
+library(lattice)
+library(GGally)
+library(ggplot2)
+library(ggridges)
+library(ggvis)
+library(ggthemes)
+library(cowplot)
+library(gapminder)
+library(gganimate)
+library(dplyr)
+library(tidyverse)
+library(grid)
+library(gridExtra)
+library(RColorBrewer)
+library(Hotelling)
+library(stats)
+library(biotools)
+library(factoextra)
+library(FactoMineR)
+library(ggfortify)
+library(psych)
+library(corrplot)
+library(devtools)
+library(cluster)
+library(magrittr)
+library(NbClust)
+library(MASS)
+library(gvlma)
+library(leaps)
+library(relaimpo)
+library(e1071)
+library(pROC)
+library(memisc)
+library(ROCR)
+library(klaR)
+library(caret)
+library(caTools)
+
+smc <- read_csv("/Users/meet/Desktop/social_media_cleaned.csv")
+smc_new <- smc[,c(3:11)]
+str(smc_new)
+
+corrplot(cor(smc_new), type = "upper", method = "color")
+#The correlation matrix shows us that there is correlation between the columns in both cases.
+#Hence, Principal Component Analysis (PCA) can be used to reduce the number of columns for the analysis.
+
+result<-cor(smc_new)
+result 
+
+#Principal Component Analysis
+smc_pca <- prcomp(smc_new,scale=TRUE)
+smc_pca
+summary(smc_pca)
+
+#Scree diagram
+fviz_eig(smc_pca, addlabels = TRUE)
+
+# The scree diagram shows us that sum of the first 2 principal components is less than 70%.
+# So, we cannot move forward using PCA for column reduction.
+# We now move on to check EFA for this main dataset.
+
+
+pca_data <- as.data.frame(smc_pca$x)
+pca_data <- pca_data[,1:2]
+
+#Exploratory Factor Analysis (EFA)
+fit.smc <- principal(smc[,3:11], nfactors=5, rotate="varimax")
+fa.diagram(fit.smc)
+
+# Defining the factors obtained
+
+# RC1
+# All of them Instagram, Whatsapp_Wechat and Youtube are popular applications among all users.
+
+# RC2
+# OTT and Twitter are another popular applications among viewers.
+
+# RC3
+# It has only 1 factor Linkedin
+
+# RC4
+# RC4 has only one variable, Snapchat.
+
+# RC5
+# RC5 has only one variable, Reddit.
+
+# Defining new columns through EFA
+
+efa_data <- as.data.frame(fit.smc$scores)
+efa_data
+
+
+
+```
+```{r}
+#Clustering
+# Kmeans optimal clusters
+# As we have two factors, Yes and No in Attrition, we check the clustering for 2 clusters only.
+
+set.seed(42)
+matstd_smc <- scale(efa_data)
+
+km.res <- kmeans(matstd_smc, 2, nstart = 10)
+
+fviz_cluster(km.res, data = matstd_smc,
+             ellipse.type = "convex",
+             palette = "jco",
+             ggtheme = theme_minimal())
+
+# We have used the efa_data for the clustering of the forst approach.
+# We can check the precision and recall using the confusion matrix below.
+
+
+Clustered <- ifelse(km.res$cluster > 1, "Not Feeling Good", "Feeling Good")
+Actual <- ifelse(smc$entire_week_feeling == 1, "Not Feeling Good", "Feeling Good")
+confusion_mat <- table(Clustered, Actual)
+confusion_mat
+accuracy <- sum(diag(confusion_mat)) / sum(confusion_mat)
+precision <- confusion_mat[1, 1] / sum(confusion_mat[, 1])
+recall <- confusion_mat[1, 1] / sum(confusion_mat[1, ])
+cat("Accuracy:", round(accuracy, 3), "\n")
+cat("Precision:", round(precision, 3), "\n")
+cat("Recall:", round(recall, 3), "\n")
+
+# Although we have a recall of 1, we can see that the confusion matrix shows the clustering is done in a way where almost all the employees are on the same side.
+# This shows that we cannot classify our data into Yes and No in Attrition based on the variables given.
+# We can now check the clustering using the second approach.
+
+#New Data
+set.seed(42)
+matstd_smc1 <- scale(pca_data)
+
+km.res1 <- kmeans(matstd_smc1, 2, nstart = 10)
+
+fviz_cluster(km.res1, data = matstd_smc1,
+             ellipse.type = "convex",
+             palette = "jco",
+             ggtheme = theme_minimal())
+
+# We have used the pca_data for the clustering of the forst approach.
+# We can check the precision and recall using the confusion matrix below.
+
+Clustered1 <- ifelse(km.res$cluster > 1, "Not Feeling Good", "Feeling Good")
+Actual <- ifelse(smc$entire_week_feeling == 1, "Not Feeling Good", "Feeling Good")
+confusion_mat1 <- table(Clustered1, Actual)
+confusion_mat1
+accuracy1 <- sum(diag(confusion_mat1)) / sum(confusion_mat1)
+precision1 <- confusion_mat1[1, 1] / sum(confusion_mat1[, 1])
+recall1 <- confusion_mat1[1, 1] / sum(confusion_mat1[1, ])
+cat("Accuracy:", round(accuracy1, 3), "\n")
+cat("Precision:", round(precision1, 3), "\n")
+cat("Recall:", round(recall1, 3), "\n")
+
+#The precision is obtained to be 91% which is not so good.
+
+
+```
+
+```{r}
+#Regression & Logistic Regression
+
+
+#Predicting the Impact on Feeling of user based on Social Media Usage
+
+smc_data <- read.csv("/Users/meet/Desktop/social_media_cleaned.csv",row.names=1, fill = TRUE)
+smc_data
+head(smc_data)
+str(smc_data)
+
+smc_data$feeling_rank <- as.factor(smc_data$feeling_rank)
+smc_data$Instagram <- as.factor(smc_data$Instagram)
+smc_data$LinkedIn <- as.factor(smc_data$LinkedIn)
+smc_data$Whatsapp_Wechat <- as.factor(smc_data$Whatsapp_Wechat)
+smc_data$youtube <- as.factor(smc_data$youtube)
+
+nrow(smc_data)
+
+## Exploratory Analysis
+
+xtabs(~ feeling_rank + Instagram, data=smc_data)
+xtabs(~ feeling_rank + LinkedIn, data=smc_data)
+xtabs(~ feeling_rank + Whatsapp_Wechat, data=smc_data)
+xtabs(~ feeling_rank + youtube, data=smc_data)
+
+#Model Development
+logistic_simple <- glm(feeling_rank~Instagram+LinkedIn+Whatsapp_Wechat+youtube, data=smc_data, family="binomial")
+summary(logistic_simple)
+
+#None of the predictor variables ("Instagram", "LinkedIn", "Snapchat", etc.) have coefficients with statistically significant p-values (all p-values are 1). This suggests that there is insufficient evidence to conclude that any of these variables have a significant impact on mood productivity.
+
+
+#For instagram = 0.17, odds of feeling_rank to be good are:
+good.log.odds <- log(0 / 1)
+good.log.odds
+
+predicted.smc_data <- data.frame(probability.of.feeling_rank=logistic_simple$fitted.values,Instagram=smc_data$Instagram)
+predicted.smc_data
+
+
+xtabs(~ probability.of.feeling_rank + Instagram, data=predicted.smc_data)
+logistic <- glm(feeling_rank ~ ., data=smc_data, family="binomial")
+summary(logistic)
+
+
+## Now calculate the overall "Pseudo R-squared" and its p-value
+ll.null <- logistic$null.deviance/-2
+ll.proposed <- logistic$deviance/-2
+(ll.null - ll.proposed) / ll.null
+
+#The Pseudo R-squared measures the proportion of total variance in the response variable that is explained by the model.
+#The output of 1 indicates that the model fits the data perfectly. However, its very rare when the model could fit perfectly, signifying an overfitting model.
+
+
+## The p-value for the R^2
+1 - pchisq(2*(ll.proposed - ll.null), df=(length(logistic$coefficients)-1))
+predicted.smc_data <- data.frame(probability.of.feeling_rank=logistic$fitted.values,feeling_rank=smc_data$feeling_rank)
+predicted.smc_data <- predicted.smc_data[order(predicted.smc_data$probability.of.feeling_rank, decreasing=FALSE),]
+predicted.smc_data$rank <- 1:nrow(predicted.smc_data)
+
+#As the p-value for R^2 is greater than 0.05, we fail to reject the null hypothesis which is the model is better than the null model (without predictors).
+
+#Residuals vs Fitted are a great way to identify heteroscedasticity via pattern recognition, however our model does not seem to have any.
+#Residuals Vs Leverage help in identifying potential problems with the regression model. Points on the right of the plot have a great influence on the model's parameters. Points with a Cook's Distance greater than highlighted threshold have a greater influence on the model.
+
+ggplot(data=predicted.smc_data, aes(x=rank, y=probability.of.feeling_rank)) +
+geom_point(aes(color=feeling_rank), alpha=1, shape=4, stroke=2) +
+xlab("Index") +
+ylab("Predicted probability of feeling_rank")
+
+#This plot highlights the performace of our model.
+#It can be clearly inferred that the model performs poorly.
+
+# From Caret
+pdata <- predict(logistic,newdata=smc_data,type="response" )
+pdata
+smc_data$feeling_rank
+pdataN <- as.factor(ifelse(test=as.numeric(pdata>0.5) == 0, yes="Good", no="Bad"))
+
+# From pROC
+roc(smc_data$feeling_rank,logistic$fitted.values,plot=TRUE)
+par(pty = "s")
+roc(smc_data$feeling_rank,logistic$fitted.values,plot=TRUE)
+
+
+roc(smc_data$feeling_rank,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE)
+roc(smc_data$feeling_rank,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage")
+
+roc(smc_data$feeling_rank,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4)
+roc(smc_data$feeling_rank,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4)
+## If we want to find out the optimal threshold we can store the
+## data used to make the ROC graph in a variable...
+roc.info <- roc(smc_data$feeling_rank, logistic$fitted.values, legacy.axes=TRUE)
+str(roc.info)
+## tpp = true positive percentage
+## fpp = false positive precentage
+roc.df <- data.frame(tpp=roc.info$sensitivities*100, fpp=(1 - roc.info$specificities)*100,thresholds=roc.info$thresholds)
+roc.df
+head(roc.df) 
+## head() will show us the values for the upper right-hand corner of the ROC graph, when the threshold is so low
+## Thus TPP = 100% and FPP = 100%
+tail(roc.df) 
+
+## tail() will show us the values for the lower left-hand corner
+## of the ROC graph, when the threshold is so high (infinity)
+## that every single sample is called "not obese".
+## Thus, TPP = 0% and FPP = 0%
+## now let's look at the thresholds between TPP 60% and 80%
+roc.df[roc.df$tpp > 60 & roc.df$tpp < 80,]
+roc(smc_data$feeling_rank,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, percent=TRUE)
+roc(smc_data$feeling_rank,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, percent=TRUE, print.auc=TRUE)
+roc(smc_data$feeling_rank,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, percent=TRUE, print.auc=TRUE, partial.auc=c(100, 90), auc.polygon = TRUE, auc.polygon.col = "#377eb822", print.auc.x=45)
+# Lets do two roc plots to understand which model is better
+roc(smc_data$feeling_rank, logistic_simple$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, print.auc=TRUE)
+# Lets add the other graph
+plot.roc(smc_data$feeling_rank, logistic$fitted.values, percent=TRUE, col="#4daf4a", lwd=4, print.auc=TRUE, add=TRUE, print.auc.y=40)
+legend("bottomright", legend=c("Simple", "Non Simple"), col=c("#377eb8", "#4daf4a"), lwd=4) 
+
+
+```
+
+
+
+```{r}
+
+smca <- read.csv("/Users/meet/Desktop/social_media_cleaned.csv")
+features <- c("Instagram", "LinkedIn", "SnapChat", "Twitter", "Whatsapp_Wechat", "youtube", "OTT", "Reddit")
+head(smca)
+dim(smca)
+str(smca)
+smca.data <- as.matrix(smca[,c(2:11)])
+row.names(smca.data) <- smca$character
+smca_raw <- cbind(smca.data, as.factor(smca$feeling_rank) - 1)
+
+# Map numeric values to categorical labels
+
+colnames(smca_raw)[2] <- "feeling_rank"
+smp_size_raw <- floor(0.75 * nrow(smca_raw))
+train_ind_raw <- sample(nrow(smca_raw), size = smp_size_raw)
+train_raw.df <- as.data.frame(smca_raw[train_ind_raw, ])
+test_raw.df <- as.data.frame(smca_raw[-train_ind_raw, ])
+
+# Iris LDA
+data("iris")
+iris
+head(iris, 3)
+str(iris)
+r <- lda(formula = Species ~ ., data = iris)
+r
+summary(r)
+print(r)
+r$counts
+r$means
+r$scaling
+r$prior
+r$lev
+r$svd
+#singular values (svd) that gives the ratio of the between- and within-group standard deviations on the linear discriminant variables.
+r$N
+r$call
+(prop = r$svd^2/sum(r$svd^2))
+#we can use the singular values to compute the amount of the between-group variance that is explained by each linear discriminant. In our example we see that the first linear discriminant explains more than 99% of the between-group variance in the iris dataset.
+r2 <- lda(formula = Species ~ ., data = iris, CV = TRUE)
+r2
+head(r2$class)
+#the Maximum a Posteriori Probability (MAP) classification (a factor)
+#posterior: posterior probabilities for the classes.
+head(r2$posterior, 3)
+train <- sample(1:150, 75)
+r3 <- lda(Species ~ ., # training model
+          iris,
+          prior = c(1,1,1)/3,
+          subset = train)
+plda = predict(object = r3, # predictions
+               newdata = iris[-train, ])
+head(plda$class)
+head(plda$posterior, 6) # posterior prob.
+head(plda$x, 3)
+plot(r)
+plot(r3)
+r <- lda(Species ~ .,
+         iris,
+         prior = c(1,1,1)/3)
+prop.lda = r$svd^2/sum(r$svd^2)
+plda <- predict(object = r,
+                newdata = iris)
+dataset = data.frame(species = iris[,"Species"],lda = plda$x)
+ggplot(dataset) + geom_point(aes(lda.LD1, lda.LD2, colour = species, shape = species), size = 2.5) + labs(x = paste("LD1 (", percent(prop.lda[1]), ")", sep=""),y = paste("LD2 (", percent(prop.lda[2]), ")", sep=""))
+
+#LDA is likely a good dimensionality reduction technique for this dataset, as it has been able to project the higher-dimensional data (four features: sepal length, sepal width, petal length, and petal width) onto a two-dimensional space (the plane of the scatter plot) while still maintaining some separability between the classes.
+#The petal length appears to be a more important feature for classification than the sepal width, since the data points are more separated along the petal length axis.
+
+
+# lets look at another way to divide a dataset
+
+set.seed(101) # Nothing is random!!
+sample_n(iris,10)
+# Lets take a sample of 75/25 like before. Dplyr preserves class. 
+training_sample <- sample(c(TRUE, FALSE), nrow(iris), replace = T, prob = c(0.75,0.25))
+train <- iris[training_sample, ]
+test <- iris[!training_sample, ]
+#lets run LDA like before
+lda.iris <- lda(Species ~ ., train)
+# do a quick plot to understand how good the model is
+plot(lda.iris, col = as.integer(train$Species))
+# Sometime bell curves are better
+plot(lda.iris, dimen = 1, type = "b")
+# THis plot shows the essense of LDA. It puts everything on a line and finds cutoffs. 
+
+#Accuracy: Accuracy is a general metric for classification performance, calculated as the ratio of correctly classified instances (TP + TN) to the total number of instances. In this case, accuracy = (TP + TN) / Total = (35 + 40) / 100 = 75%.
+#Overall, the confusion matrix suggests that the model performs moderately well in classifying "Good" and "Bad" instances. However, there are some misclassifications 
+
+# Partition plots
+partimat(Species ~ Sepal.Length + Sepal.Width + Petal.Length + Petal.Width, data=train, method="lda")
+
+# Lets focus on accuracy. Table function
+lda.train <- predict(lda.iris)
+train$lda <- lda.train$class
+table(train$lda,train$Species)
+# running accuracy on the training set shows how good the model is. It is not an indication of "true" accuracy. We will use the test set to approximate accuracy
+lda.test <- predict(lda.iris,test)
+test$lda <- lda.test$class
+table(test$lda,test$Species)
+
+
+# Wilk's Lambda and F test for each variablw
+m <- manova(cbind(Sepal.Length,Sepal.Width,Petal.Length,Petal.Width)~Species,data=iris)
+summary(m,test="Wilks")
+summary(m,test="Pillai")
+summary.aov(m)
+
+
+```

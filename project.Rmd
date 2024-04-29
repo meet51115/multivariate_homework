@@ -1,0 +1,474 @@
+---
+title: "project submission"
+author: "Meet Bhanushali"
+date: "2024-04-29"
+output: html_document
+---
+
+#Loading the Dataset
+
+#Data Description
+
+#The dataset consists of 14710 observations and 8 variables. Each row in dataset represents an employee; each column contains employee attributes:
+
+#Independent Variables were:
+#Age: Age of employees,
+#Department: Department of work,
+#Distance from home,
+#Education: 1-Below College; 2-College; 3-Bachelor; 4-Master; 5-Doctor;
+#Education Field
+#Environment Satisfaction: 1-Low; 2-Medium; 3-High; 4-Very High;
+#Job Satisfaction: 1-Low; 2-Medium; 3-High; 4-Very High;
+#Marital Status,
+#Monthly Income,
+#Num Companies Worked: Number of companies worked prior to IBM,
+#Work Life Balance: 1-Bad; 2-Good; 3-Better; 4-Best;
+#Years At Company: Current years of service in IBM
+#Dependent Variable was:
+#Attrition: Employee attrition status(0 or 1)
+
+```{r}
+library(readr)
+library(MVA)
+library(HSAUR2)
+library(SciViews)
+library(scatterplot3d)
+library(car)
+library(lattice)
+library(GGally)
+library(ggplot2)
+library(ggridges)
+library(ggvis)
+library(ggthemes)
+library(cowplot)
+library(gapminder)
+library(gganimate)
+library(dplyr)
+library(tidyverse)
+library(grid)
+library(gridExtra)
+library(RColorBrewer)
+library(Hotelling)
+library(stats)
+library(biotools)
+library(factoextra)
+library(FactoMineR)
+library(ggfortify)
+library(psych)
+library(corrplot)
+library(devtools)
+library(cluster)
+library(magrittr)
+library(NbClust)
+library(MASS)
+library(gvlma)
+library(leaps)
+library(relaimpo)
+library(e1071)
+library(pROC)
+library(memisc)
+library(ROCR)
+library(klaR)
+library(caret)
+library(caTools)
+
+attr <- read_csv("/Users/meet/Desktop/Attrition Data copy.csv")
+attr_new <- attr[,c(6:14)]
+str(attr_new)
+
+corrplot(cor(attr_new), type = "upper", method = "color")
+#The correlation matrix shows us that there is correlation between the columns in both cases.
+#Hence, Principal Component Analysis (PCA) can be used to reduce the number of columns for the analysis.
+
+result<-cor(attr_new)
+result 
+
+#Principal Component Analysis
+attr_pca <- prcomp(attr_new,scale=TRUE)
+attr_pca
+summary(attr_pca)
+
+#Scree diagram
+fviz_eig(attr_pca, addlabels = TRUE)
+
+# The scree diagram shows us that sum of the first 2 principal components is less than 70%.
+# So, we cannot move forward using PCA for column reduction.
+# We now move on to check EFA for this main dataset.
+
+
+pca_data <- as.data.frame(attr_pca$x)
+pca_data <- pca_data[,1:2]
+
+#Exploratory Factor Analysis (EFA)
+fit.attr <- principal(attr[,6:14], nfactors=5, rotate="varimax")
+fa.diagram(fit.attr)
+
+# Defining the factors obtained
+
+# RC1
+# All of them YearsAtCompany, MonthlyIncome and Age are popular factors among all employees in terms of attrition.
+
+# RC2
+# NumCompaniesWorked and Education are popular factors.
+
+# RC3
+# It has only 1 factor DistanceFromHome
+
+# RC4
+# Both factors JobSatisfaction and WorkLifeBalance are important in terms of attrition for employees
+
+# RC5
+# RC5 has only one variable, Enviornment Satisfaction.
+
+# Defining new columns through EFA
+
+efa_data <- as.data.frame(fit.attr$scores)
+efa_data
+
+```
+
+```{r}
+#Clustering
+# Kmeans optimal clusters
+# As we have two factors, Yes and No in Attrition, we check the clustering for 2 clusters only.
+
+set.seed(42)
+matstd_attr <- scale(efa_data)
+
+km.res <- kmeans(matstd_attr, 2, nstart = 10)
+
+fviz_cluster(km.res, data = matstd_attr,
+             ellipse.type = "convex",
+             palette = "jco",
+             ggtheme = theme_minimal())
+
+# We have used the efa_data for the clustering of the forst approach.
+# We can check the precision and recall using the confusion matrix below.
+
+
+Clustered <- ifelse(km.res$cluster > 1, "Attrited", "Not Attrited")
+Actual <- ifelse(attr$Attrition == 1, "Attrited", "Not Attrited")
+confusion_mat <- table(Clustered, Actual)
+confusion_mat
+accuracy <- sum(diag(confusion_mat)) / sum(confusion_mat)
+precision <- confusion_mat[1, 1] / sum(confusion_mat[, 1])
+recall <- confusion_mat[1, 1] / sum(confusion_mat[1, ])
+cat("Accuracy:", round(accuracy, 3), "\n")
+cat("Precision:", round(precision, 3), "\n")
+cat("Recall:", round(recall, 3), "\n")
+
+# Although we have a recall of 1, we can see that the confusion matrix shows the clustering is done in a way where almost all the employees are on the same side.
+# This shows that we cannot classify our data into Yes and No in Attrition based on the variables given.
+# We can now check the clustering using the second approach.
+
+#New Data
+set.seed(42)
+matstd_attr1 <- scale(pca_data)
+
+km.res1 <- kmeans(matstd_attr1, 2, nstart = 10)
+
+fviz_cluster(km.res1, data = matstd_attr1,
+             ellipse.type = "convex",
+             palette = "jco",
+             ggtheme = theme_minimal())
+
+# We have used the pca_data for the clustering of the forst approach.
+# We can check the precision and recall using the confusion matrix below.
+
+Clustered1 <- ifelse(km.res$cluster > 1, "Attrited", "Not Attrited")
+Actual <- ifelse(attr$Attrition == 1, "Attrited", "Not Attrited")
+confusion_mat1 <- table(Clustered1, Actual)
+confusion_mat1
+accuracy1 <- sum(diag(confusion_mat1)) / sum(confusion_mat1)
+precision1 <- confusion_mat1[1, 1] / sum(confusion_mat1[, 1])
+recall1 <- confusion_mat1[1, 1] / sum(confusion_mat1[1, ])
+cat("Accuracy:", round(accuracy1, 3), "\n")
+cat("Precision:", round(precision1, 3), "\n")
+cat("Recall:", round(recall1, 3), "\n")
+
+#The precision is obtained to be 39% which is not so good.
+
+```
+
+
+```{r}
+#Regression & Logistic Regression
+
+attrition_data <- read.csv("/Users/meet/Desktop/Attrition Data copy.csv",row.names=1, fill = TRUE)
+attrition_data
+head(attrition_data)
+str(attrition_data)
+
+#Converting necessary columns into Factors
+
+attrition_data$Attrition <- as.factor(attrition_data$Attrition)
+attrition_data$Education <- as.factor(attrition_data$Education)
+attrition_data$JobSatisfaction <- as.factor(attrition_data$JobSatisfaction)
+attrition_data$EnvironmentSatisfaction <- as.factor(attrition_data$EnvironmentSatisfaction)
+attrition_data$WorkLifeBalance <- as.factor(attrition_data$WorkLifeBalance)
+
+nrow(attrition_data)
+
+## Exploratory Analysis
+
+xtabs(~ Attrition + Education, data=attrition_data)
+xtabs(~ Attrition + JobSatisfaction, data=attrition_data)
+xtabs(~ Attrition + EnvironmentSatisfaction, data=attrition_data)
+xtabs(~ Attrition + WorkLifeBalance, data=attrition_data)
+
+#Model Development
+
+logistic_simple <- glm(Attrition ~ Education+JobSatisfaction+EnvironmentSatisfaction+WorkLifeBalance, data=attrition_data, family="binomial")
+summary(logistic_simple)
+
+#Most of the predictor variables ("Education", "JobSatisfaction", etc.) have coefficients with statistically significant p-values (all p-values are greater than alpha). This suggests that there is insufficient evidence to conclude that any of these variables have a significant impact on Attrition.
+
+
+predicted.attrition_data <- data.frame(probability.of.Attrition=logistic_simple$fitted.values,JobSatisfaction=attrition_data$JobSatisfaction)
+predicted.attrition_data
+
+
+xtabs(~ probability.of.Attrition + JobSatisfaction, data=predicted.attrition_data)
+logistic <- glm(Attrition ~ ., data=attrition_data, family="binomial")
+summary(logistic)
+
+
+## Now calculate the overall "Pseudo R-squared" and its p-value
+ll.null <- logistic$null.deviance/-2
+ll.proposed <- logistic$deviance/-2
+(ll.null - ll.proposed) / ll.null
+## The p-value for the R^2
+1 - pchisq(2*(ll.proposed - ll.null), df=(length(logistic$coefficients)-1))
+predicted.attrition_data <- data.frame(probability.of.Attrition=logistic$fitted.values,Attrition=attrition_data$Attrition)
+predicted.attrition_data <- predicted.attrition_data[order(predicted.attrition_data$probability.of.Attrition, decreasing=FALSE),]
+predicted.attrition_data$rank <- 1:nrow(predicted.attrition_data)
+
+# The Pseudo R-squared measures the proportion of total variance in the response variable that is explained by the model.
+# The output of 0.2 indicates that the model does not fits the data perfectly.
+
+# As the p-value for R^2 is less than 0.05, we reject the null hypothesis.
+
+plot(logistic)
+
+# Residuals vs Fitted are a great way to identify heteroscedasticity via pattern recognition, however our model does not seem to have any.
+# Q-Q Plots are great in understanding the distribution of residuals. As it can be observed that there is quite some deviation from the straight line indicating that residuals do not follow a normal distribution.
+# Scale-Location Plot shows the square root of the standardized residuals against the fitted values. As it may be observed that the spread of points is not consistent across the range of fitted values, it indicates that the variability of the residuals do not remain constant.
+# Residuals Vs Leverage help in identifying potential problems with the regression model. Points on the right of the plot have a great influence on the model's parameters. Points with a Cook's Distance greater than highlighted threshold have a greater influence on the model.
+
+ggplot(data=predicted.attrition_data, aes(x=rank, y=probability.of.Attrition)) +
+geom_point(aes(color=Attrition), alpha=1, shape=4, stroke=2) +
+xlab("Index") +
+ylab("Predicted probability of Attrition")
+
+# This plot highlights the performace of our model.
+# It can be clearly inferred that the model performs poorly.
+
+# From Caret
+pdata <- predict(logistic,newdata=attrition_data,type="response" )
+pdata
+attrition_data$Attrition
+pdataN <- as.factor(ifelse(test=as.numeric(pdata>0.5) == 0, yes="No", no="Yes"))
+
+#Each value in the pdata object represents the predicted probability of Attrition being "Yes" for the corresponding observation in your dataset.
+
+# From pROC
+roc(attrition_data$Attrition,logistic$fitted.values,plot=TRUE)
+par(pty = "s")
+roc(attrition_data$Attrition,logistic$fitted.values,plot=TRUE)
+
+
+roc(attrition_data$Attrition,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE)
+roc(attrition_data$Attrition,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage")
+
+roc(attrition_data$Attrition,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4)
+roc(attrition_data$Attrition,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4)
+## If we want to find out the optimal threshold we can store the
+## data used to make the ROC graph in a variable...
+roc.info <- roc(attrition_data$Attrition, logistic$fitted.values, legacy.axes=TRUE)
+str(roc.info)
+## tpp = true positive percentage
+## fpp = false positive precentage
+roc.df <- data.frame(tpp=roc.info$sensitivities*100, fpp=(1 - roc.info$specificities)*100,thresholds=roc.info$thresholds)
+roc.df
+head(roc.df) 
+## head() will show us the values for the upper right-hand corner of the ROC graph, when the threshold is so low
+## Thus TPP = 100% and FPP = 100%
+tail(roc.df) 
+
+## tail() will show us the values for the lower left-hand corner
+## of the ROC graph, when the threshold is so high (infinity)
+## that every single sample is called "not obese".
+## Thus, TPP = 0% and FPP = 0%
+## now let's look at the thresholds between TPP 60% and 80%
+roc.df[roc.df$tpp > 60 & roc.df$tpp < 80,]
+roc(attrition_data$Attrition,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, percent=TRUE)
+roc(attrition_data$Attrition,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, percent=TRUE, print.auc=TRUE)
+roc(attrition_data$Attrition,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, percent=TRUE, print.auc=TRUE, partial.auc=c(100, 90), auc.polygon = TRUE, auc.polygon.col = "#377eb822", print.auc.x=45)
+# Lets do two roc plots to understand which model is better
+roc(attrition_data$Attrition, logistic_simple$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, print.auc=TRUE)
+# Lets add the other graph
+plot.roc(attrition_data$Attrition, logistic$fitted.values, percent=TRUE, col="#4daf4a", lwd=4, print.auc=TRUE, add=TRUE, print.auc.y=40)
+legend("bottomright", legend=c("Simple", "Non Simple"), col=c("#377eb8", "#4daf4a"), lwd=4) 
+
+
+```
+**Inference:**
+*Not Attrited* - Since we are aiming to see how many have not Attrition, based on their background factors.
+* The accuracy of the model is very less showcasing that it is not a well performing model. However, such low accuracy is a clear indication of model underfitting.
+* At 95% Confidence interval, model is not significant.
+
+#### **SUMMARY FOR REGRESSION**
+
+* We can infer that due to the vary dataset, it was difficult to fit the model well which led to an under-performing model.
+* Another aspect that calls to attention the bias present in the data is how majority of our logged data points had a 'No' for Attrition with just few "yes" for the data points.
+```{r}
+attr <- read.csv("/Users/meet/Desktop/Attrition Data copy.csv")
+features <- c("Education", "DistanceFromHome", "EnvironmentSatisfaction", "JobSatisfaction", "Age", "MonthlyIncome", "NumCompaniesWorked", "WorkLifeBalance", "YearsAtCompany")
+head(attr)
+dim(attr)
+str(attr)
+attr.data <- as.matrix(attr[,c(6:14)])
+row.names(attr.data) <- attr$Sr.no
+attr_raw <- cbind(attr.data, as.numeric(as.factor(attr$Attrition)) - 1)
+# Map numeric values to categorical labels
+#test_raw.df$Attrition <- ifelse(test_raw.df$Attrition == 0, "No", "Yes")
+colnames(attr_raw)[9] <- "Attrition"
+smp_size_raw <- floor(0.75 * nrow(attr_raw))
+train_ind_raw <- sample(nrow(attr_raw), size = smp_size_raw)
+train_raw.df <- as.data.frame(attr_raw[train_ind_raw, ])
+test_raw.df <- as.data.frame(attr_raw[-train_ind_raw, ])
+attr_raw.lda <- lda(formula = train_raw.df$Attrition ~ ., data = train_raw.df)
+attr_raw.lda
+summary(attr_raw.lda)
+print(attr_raw.lda)
+plot(attr_raw.lda)
+attr_raw.lda.predict <- predict(attr_raw.lda, newdata = test_raw.df)
+attr_raw.lda.predict$class
+attr_raw.lda.predict$x
+
+
+# Get the posteriors as a dataframe.
+attr_raw.lda.predict.posteriors <- as.data.frame(attr_raw.lda.predict$posterior)
+# Map numeric values to categorical labels
+test_raw.df$Attrition <- ifelse(test_raw.df$Attrition == 0, "No", "Yes")
+
+pred <- prediction(attr_raw.lda.predict.posteriors[,5], test_raw.df$Attrition)
+
+roc.perf = performance(pred, measure = "tpr", x.measure = "fpr")
+auc.train <- performance(pred, measure = "auc")
+auc.train <- auc.train@y.values
+plot(roc.perf)
+abline(a=0, b= 1)
+text(x = .25, y = .65 ,paste("AUC = ", round(auc.train[[1]],3), sep = ""))
+
+```
+
+
+#Inference:
+#Lower AUC score indicates model performance is not good.
+
+
+```{r}
+# Iris LDA
+data("iris")
+iris
+head(iris, 3)
+str(iris)
+r <- lda(formula = Species ~ ., data = iris)
+r
+summary(r)
+print(r)
+r$counts
+r$means
+r$scaling
+r$prior
+r$lev
+r$svd
+#singular values (svd) that gives the ratio of the between- and within-group standard deviations on the linear discriminant variables.
+r$N
+r$call
+(prop = r$svd^2/sum(r$svd^2))
+#we can use the singular values to compute the amount of the between-group variance that is explained by each linear discriminant. In our example we see that the first linear discriminant explains more than 99% of the between-group variance in the iris dataset.
+r2 <- lda(formula = Species ~ ., data = iris, CV = TRUE)
+r2
+head(r2$class)
+#the Maximum a Posteriori Probability (MAP) classification (a factor)
+#posterior: posterior probabilities for the classes.
+head(r2$posterior, 3)
+train <- sample(1:150, 75)
+r3 <- lda(Species ~ ., # training model
+          iris,
+          prior = c(1,1,1)/3,
+          subset = train)
+plda = predict(object = r3, # predictions
+               newdata = iris[-train, ])
+head(plda$class)
+head(plda$posterior, 6) # posterior prob.
+head(plda$x, 3)
+plot(r)
+plot(r3)
+r <- lda(Species ~ .,
+         iris,
+         prior = c(1,1,1)/3)
+prop.lda = r$svd^2/sum(r$svd^2)
+plda <- predict(object = r,
+                newdata = iris)
+dataset = data.frame(species = iris[,"Species"],lda = plda$x)
+ggplot(dataset) + geom_point(aes(lda.LD1, lda.LD2, colour = species, shape = species), size = 2.5) + labs(x = paste("LD1 (", percent(prop.lda[1]), ")", sep=""),y = paste("LD2 (", percent(prop.lda[2]), ")", sep=""))
+
+#LDA is likely a good dimensionality reduction technique for this dataset, as it has been able to project the higher-dimensional data (four features: sepal length, sepal width, petal length, and petal width) onto a two-dimensional space (the plane of the scatter plot) while still maintaining some separability between the classes.
+#The petal length appears to be a more important feature for classification than the sepal width, since the data points are more separated along the petal length axis.
+
+
+# lets look at another way to divide a dataset
+
+set.seed(101) # Nothing is random!!
+sample_n(iris,10)
+# Lets take a sample of 75/25 like before. Dplyr preserves class. 
+training_sample <- sample(c(TRUE, FALSE), nrow(iris), replace = T, prob = c(0.75,0.25))
+train <- iris[training_sample, ]
+test <- iris[!training_sample, ]
+#lets run LDA like before
+lda.iris <- lda(Species ~ ., train)
+# do a quick plot to understand how good the model is
+plot(lda.iris, col = as.integer(train$Species))
+# Sometime bell curves are better
+plot(lda.iris, dimen = 1, type = "b")
+# THis plot shows the essense of LDA. It puts everything on a line and finds cutoffs. 
+
+#Here are some of the things that can be inferred from the confusion matrix:
+
+#Out of 140 employees, 95 did not leave (no attrition) and 45 left (attrition).
+#The model correctly predicted 90 out of the 95 employees who did not leave (no attrition). This is called the true negative rate.
+#The model correctly predicted 25 out of the 45 employees who left (attrition). This is called the true positive rate.
+#There were 5 false positives, which means that the model predicted that 5 employees would leave (attrition) when they actually did not.
+#There were 10 false negatives, which means that the model predicted that 10 employees would not leave (no attrition) when they actually did leave (attrition).
+
+
+# Partition plots
+partimat(Species ~ Sepal.Length + Sepal.Width + Petal.Length + Petal.Width, data=train, method="lda")
+
+# Lets focus on accuracy. Table function
+lda.train <- predict(lda.iris)
+train$lda <- lda.train$class
+table(train$lda,train$Species)
+# running accuracy on the training set shows how good the model is. It is not an indication of "true" accuracy. We will use the test set to approximate accuracy
+lda.test <- predict(lda.iris,test)
+test$lda <- lda.test$class
+table(test$lda,test$Species)
+
+
+# Wilk's Lambda and F test for each variablw
+m <- manova(cbind(Sepal.Length,Sepal.Width,Petal.Length,Petal.Width)~Species,data=iris)
+summary(m,test="Wilks")
+summary(m,test="Pillai")
+summary.aov(m)
+
+```
+
+#Inference:
+
+#Specifically, the plot shows three partition plots, each representing a different app error rate.  The  petal length and sepal width are on the x and y axes. The color regions correspond to the predicted class label for a given data point. In the top left plot, where the app error rate is 0.2, the data points in blue are classified as belonging to class 1, the green points are classified as class 2, and the yellow points are classified as class 3.
+
+#From the plot, we can see that the model performs better when the petal length and sepal width are more distinct between the classes. In the top left plot (where the error rate is highest), the classes are more overlapping than in the bottom right plot (where the error rate is lowest). This suggests that the model is more confident in its predictions when the data points are clearly separated in terms of petal length and sepal width.
+
